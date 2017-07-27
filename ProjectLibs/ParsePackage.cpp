@@ -54,3 +54,33 @@ bool ParsePackage::ReadSkill(void *pPackage, int* pIntSkill) {
 	*pIntSkill = *pSkill;
 	return true;
 }
+
+bool ParsePackage::ReadTime(void *pPackage, int* pIntTime) {
+	if (ReadPackageType(pPackage) != m_TIME) {
+		return false;
+	}
+	int *pTime = (int *)SkipPackageType(pPackage);
+	*pIntTime = *pTime;
+	return true;
+}
+
+void ParsePackage::WriteTime(void *pPackage, int nTime) {
+	int *pInt = (int * )pPackage;
+	pInt[0] = m_Time;
+	pInt[1] = nTime;
+}
+
+bool ParsePackage::ReadPlayerId(void *pPackage, int* pPlayerId){
+	if (ReadPackageType(pPackage) != m_PLAYER_ID) {
+		return false;
+	}
+	int *pInt = (int *)SkipPackageType(pPackage);
+	*pPlayerId = *pInt;
+	return true;
+}
+
+void ParsePackage::WritePlayerId(void *pPackage, int pPlayerId) {
+	int *pInt = (int * )pPackage;
+	pInt[0] = m_PLAYER_ID;
+	pInt[1] = pPlayerId;
+}

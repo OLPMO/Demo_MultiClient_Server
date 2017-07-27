@@ -3,6 +3,6 @@
 
 typedef struct playerstate{
 	int hp;
-}PlayerState;//stu2是一个结构体类型
+}PlayerState;
 
 #endif
