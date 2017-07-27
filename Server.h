@@ -1,0 +1,81 @@
+#ifndef _SERVER_H_
+#define _SERVER_H_
+
+#include <map>
+
+#include <WinSock2.h>
+#include <Windows.h>
+#include <WS2tcpip.h>
+
+#include "ServMsg.h"
+#include "ServQueue.h"
+#include "ServMemory.h"
+
+#pragma comment(lib, "ws2_32.lib")
+
+
+// 宏
+
+
+#define CLIENT_NUM_MAX (32) // 支持的最大玩家数
+
+#define PACKET_SIZE_BYTE (64) // 数据包大小
+
+#define SEND_THREAD_NUM (5) // 发送消息线程的数量
+
+#define HANDLE_THREAD_NUM (3) // 服务器处理线程数量
+
+
+// 客户端
+typedef struct Client
+{
+	int id;
+	SOCKET sock;
+	HANDLE thread;
+} CLIENT, *CLIENT_PTR;
+
+
+
+// 全局变量
+
+
+extern bool exitFlag;
+
+extern SOCKET sockServ;
+
+extern HANDLE hThreadAccept;
+
+extern HANDLE hThreadSend[SEND_THREAD_NUM];
+
+extern HANDLE hThreadHandle[HANDLE_THREAD_NUM];
+
+extern std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
+
+extern ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
+
+extern ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
+
+extern ServMemory<DataPacket> PacketPool; // 数据包内存池
+
+
+
+// 函数声明
+
+
+bool Start(unsigned short port); // 启动
+
+void Close(void); // 关闭
+
+bool UserValidate(const char *name, const char *pwd, int &id); // 验证是否可登陆并返回ID
+
+
+unsigned int _stdcall func_thread_accept(void *arg); // 连接接收进程
+
+unsigned int _stdcall func_thread_recv(void *arg);   // 数据接收进程
+
+unsigned int _stdcall func_thread_send(void *arg);   // 数据发送进程
+
+unsigned int _stdcall func_thread_handle(void *arg); // 服务器数据处理进程
+
+
+#endif
