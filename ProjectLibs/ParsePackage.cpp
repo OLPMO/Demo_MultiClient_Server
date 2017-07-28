@@ -1,6 +1,6 @@
 #include "ParsePackage.h"
 
-
+using namespace std;
 bool ParsePackage::ReadPosition(void *pPackage,float* pFloatX,float* pFloatY,float* pFloatZ){
 	
 	if (ReadPackageType(pPackage) != m_PLAYER_POSITION) {
@@ -66,7 +66,7 @@ bool ParsePackage::ReadTime(void *pPackage, int* pIntTime) {
 
 void ParsePackage::WriteTime(void *pPackage, int nTime) {
 	int *pInt = (int * )pPackage;
-	pInt[0] = m_Time;
+	pInt[0] = m_TIME;
 	pInt[1] = nTime;
 }
 
