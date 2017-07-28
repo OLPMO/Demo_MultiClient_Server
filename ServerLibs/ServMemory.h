@@ -1,8 +1,6 @@
 #ifndef _SERV_MEMORY_H_
 #define _SERV_MEMORY_H_
 
-#include <mutex>
-
 /*
 
 	ÄÚ´æ³ØÄ£°å

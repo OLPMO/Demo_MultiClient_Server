@@ -2,6 +2,11 @@
 #define _SERVER_H_
 
 #include <map>
+#include <mutex>
+
+#include <time.h>
+#include <memory.h>
+#include <process.h>
 
 #include <WinSock2.h>
 #include <Windows.h>
@@ -21,9 +26,9 @@
 
 #define PACKET_SIZE_BYTE (64) // Êı¾İ°ü´óĞ¡
 
-#define SEND_THREAD_NUM (5) // ·¢ËÍÏûÏ¢Ïß³ÌµÄÊıÁ¿
+#define SEND_THREAD_NUM (8) // ·¢ËÍÏûÏ¢Ïß³ÌµÄÊıÁ¿
 
-#define HANDLE_THREAD_NUM (3) // ·şÎñÆ÷´¦ÀíÏß³ÌÊıÁ¿
+#define HANDLE_THREAD_NUM (5) // ·şÎñÆ÷´¦ÀíÏß³ÌÊıÁ¿
 
 
 // ¿Í»§¶Ë
@@ -57,6 +62,11 @@ extern ServQueue<DataPacket*, 128> queHandle;  // ´¦Àí¶ÓÁĞ - ÆäÖĞÊı¾İ°üĞèÒª·şÎñÆ
 
 extern ServMemory<DataPacket> PacketPool; // Êı¾İ°üÄÚ´æ³Ø
 
+extern std::mutex mtxQueForward; // ×ª·¢¶ÓÁĞ»¥³âÁ¿
+
+extern std::mutex mtxQueHandle;  // ´¦Àí¶ÓÁĞ»¥³âÁ¿
+
+extern std::mutex mtxPacketPool; // °üÄÚ´æ³Ø»¥³âÁ¿
 
 
 // º¯ÊıÉùÃ÷

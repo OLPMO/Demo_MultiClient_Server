@@ -1,7 +1,15 @@
 #ifndef _SERV_MSG_H_
 #define _SERV_MSG_H_
 
+
+#include <memory.h>
+
+
+#define PACK_DATA_BYTE (80) // 数据包字节数
+
 #define PACK_TYPE_LOGIN (-1) // 包类型 - 登录信息
+#define PACK_TYPE_ERROR (-2) // 包类型 - 错误信息
+#define PACK_TYPE_DENY  (-3) // 包类型 - 拒绝登录
 
 #define PACK_TAR_BOARDCAST (-1) // 包目标 - 广播
 #define PACK_TAR_SERVER    (-2) // 包目标 - 服务器处理
@@ -12,7 +20,8 @@
 // 数据包
 typedef struct DataPacket
 {
-	char data[128];
+	int from;
+	char data[PACK_DATA_BYTE];
 } DATA_PACKET, *DATA_PACKET_PTR;
 
 
@@ -56,12 +65,19 @@ inline long GetPacketTime(const DataPacket &packet)
 }
 
 
-
 // 获取包ID
 inline int GetPacketIdentify(const DataPacket &packet)
 {
 	int *data = (int*)packet.data;
 	return data[3];
+}
+
+
+// 获取包用户名和密码
+inline void ParsePacketLogin(const DataPacket &packet, char *name, char *pwd)
+{
+	memcpy(name, &packet.data[16], 32);
+	memcpy(pwd, &packet.data[48], 32);
 }
 
 

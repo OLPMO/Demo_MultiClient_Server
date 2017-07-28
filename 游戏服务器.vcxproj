@@ -78,14 +78,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Server.h" />
-    <ClInclude Include="ServMemory.h" />
-    <ClInclude Include="ServMsg.h" />
-    <ClInclude Include="ServQueue.h" />
+    <ClInclude Include="ServerLibs\Server.h" />
+    <ClInclude Include="ServerLibs\ServLog.h" />
+    <ClInclude Include="ServerLibs\ServMemory.h" />
+    <ClInclude Include="ServerLibs\ServMsg.h" />
+    <ClInclude Include="ServerLibs\ServQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Server.cpp" />
+    <ClCompile Include="ServerLibs\Server.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
