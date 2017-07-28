@@ -75,17 +75,13 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\PlayerSetUp.cs" />
+    <Compile Include="Assets\Scripts\GameSceneScripts\Player\LocalPlayerSetUp.cs" />
+    <Compile Include="Assets\Scripts\GameSceneScripts\Player\PlayerController.cs" />
+    <Compile Include="Assets\Scripts\GameSceneScripts\Player\RemotePlayerSetUp.cs" />
+    <Compile Include="Assets\Scripts\GameSceneScripts\SceneSetUp.cs" />
     <Compile Include="Assets\Scripts\LoginSceneScripts\Login.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\MyNetWorkManager.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\Rec\ClientRecNet.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\Rec\NetRec.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\Send\ClientSendNet.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\Send\NetSend.cs" />
-    <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
-    <Compile Include="Assets\Scripts\Player\PlayerManager.cs" />
-    <Compile Include="Assets\Scripts\Player\Role.cs" />
-    <Compile Include="Assets\Scripts\Player\RoleTransform.cs" />
+    <Compile Include="Assets\Scripts\NetWorkModule\NetworkManager.cs" />
+    <Compile Include="Assets\Scripts\NetWorkModule\SocketManager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />
