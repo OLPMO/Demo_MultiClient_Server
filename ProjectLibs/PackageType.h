@@ -7,7 +7,8 @@
 #define m_PLAYER_STATE 3
 #define m_PLAYER_ID 4
 #define m_TIME 5
+#define m_LOGIN_INFO 6
 
-#define m_MAX_PACKAGE_NUM 6
+#define m_MAX_PACKAGE_NUM 7
 
 #endif
