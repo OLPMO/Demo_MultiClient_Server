@@ -46,6 +46,7 @@ typedef struct Client
 
 extern bool exitFlag;
 
+
 extern SOCKET sockServ;
 
 extern HANDLE hThreadAccept;
@@ -54,13 +55,19 @@ extern HANDLE hThreadSend[SEND_THREAD_NUM];
 
 extern HANDLE hThreadHandle[HANDLE_THREAD_NUM];
 
-extern std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
+extern HANDLE hSignalSend;   // 发送线程启动信号
+
+extern HANDLE hSignalHandle; // 处理线程启动信号
+
 
 extern ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
 
 extern ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
 
 extern ServMemory<DataPacket> PacketPool; // 数据包内存池
+
+
+extern std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
 
 extern std::mutex mtxQueForward; // 转发队列互斥量
 

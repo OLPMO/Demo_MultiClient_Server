@@ -1,7 +1,6 @@
 #ifndef _SERV_QUEUE_H_
 #define _SERV_QUEUE_H_
 
-#include <memory.h>
 
 // 队列模板 - 数据类型 / 最大个数
 template<class T, int SIZE> class ServQueue
@@ -40,7 +39,7 @@ inline void ServQueue<T, SIZE>::Push(T &data)
 	int next = (tail + 1) % SIZE;
 	if (next != head)
 	{
-		memcpy(&list[tail], &data, sizeof(T));
+		list[tail] = data;
 		tail = next;
 		size++;
 	}
@@ -52,7 +51,7 @@ inline void ServQueue<T, SIZE>::Push(T &data)
 template<class T, int SIZE>
 inline T ServQueue<T, SIZE>::Pop(void)
 {
-	if (Empty()) return 0;
+	if (Empty()) return NULL;
 	
 	int tmp = head;
 	head = (head + 1) % SIZE;
@@ -66,7 +65,7 @@ inline T ServQueue<T, SIZE>::Pop(void)
 template<class T, int SIZE>
 inline T ServQueue<T, SIZE>::Front(void)
 {
-	if (size == 0) return 0;
+	if (size == 0) return NULL;
 	return list[head];
 }
 

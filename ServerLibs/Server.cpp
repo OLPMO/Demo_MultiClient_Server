@@ -13,13 +13,19 @@ HANDLE hThreadSend[SEND_THREAD_NUM];
 
 HANDLE hThreadHandle[HANDLE_THREAD_NUM];
 
-std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
+HANDLE hSignalSend;   // 发送线程启动信号
+
+HANDLE hSignalHandle; // 处理线程启动信号
+
 
 ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
 
 ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
 
 ServMemory<DataPacket> packetPool; // 数据包内存池
+
+
+std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
 
 std::mutex mtxQueForward; // 转发队列互斥量
 
@@ -37,6 +43,9 @@ bool Start(unsigned short port)
 	exitFlag = false;
 	memset(hThreadSend, 0, sizeof(hThreadSend));
 	memset(hThreadHandle, 0, sizeof(hThreadHandle));
+
+	hSignalSend = CreateEvent(NULL, true, true, TEXT("signal_send"));
+	hSignalHandle = CreateEvent(NULL, true, true, TEXT("signal_send"));
 
 	WSAData wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -109,6 +118,9 @@ void Close(void)
 
 	queHandle.Clear();
 	queForward.Clear();
+
+	for (int i = 0; i < SEND_THREAD_NUM; i++) SetEvent(hSignalSend);
+	for (int i = 0; i < HANDLE_THREAD_NUM; i++) SetEvent(hSignalHandle);
 
 	hThreadAccept = 0;
 	memset(hThreadSend, 0, sizeof(hThreadSend));
@@ -218,12 +230,28 @@ unsigned int _stdcall func_thread_recv(void * parm)
 			// TODO - 登录操作
 			char name[32] = { 0 }, pwd[32] = { 0 };
 			ParsePacketLogin(*packet, name, pwd);
-			printf("User name : %s.\n", name);
-			printf("Password  : %s.\n", pwd);
+			printf("User name : %s.\n", name); ////////////////////////////////////////////////////////
+			printf("Password  : %s.\n", pwd);  ////////////////////////////////////////////////////////
 			if (UserValidate(name, pwd, clientConn->id) && mapClients.find(clientConn->id) == mapClients.end())
 			{
-				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
 				loginSucc = true;
+				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
+
+				mtxPacketPool.lock(); // Lock
+				DataPacket *pack = packetPool.Alloc();
+				mtxPacketPool.unlock(); // Unlock
+				
+				pack->from = PACK_FROM_SERVER;
+				SetPacketType(*pack, PACK_TYPE_ACCEPT);
+				SetPacketTime(*pack, time(NULL));
+				SetPacketIdentify(*pack, clientConn->id);
+
+				mtxQueForward.lock(); // Lock
+				queForward.Push(pack);
+				mtxQueForward.unlock(); // Unlock
+
+				printf("User : %s [Login Accepted]\n", name); //////////////////////////////////////
+
 			}
 			else
 			{
@@ -263,12 +291,16 @@ unsigned int _stdcall func_thread_recv(void * parm)
 					mtxQueHandle.lock(); // Lock
 					queHandle.Push(packet);
 					mtxQueHandle.unlock(); // Unlock
+
+					SetEvent(hSignalHandle); // 唤醒一个等待的处理线程
 				}
 				else if (tar >= 0 || tar == PACK_TAR_BOARDCAST)
 				{
 					mtxQueForward.lock(); // Lock
 					queForward.Push(packet);
 					mtxQueForward.unlock(); // Unlock
+
+					SetEvent(hSignalSend); // 唤醒一个等待的转发线程
 				}
 
 				mtxPacketPool.lock(); // Lock
@@ -300,7 +332,9 @@ unsigned int _stdcall func_thread_send(void * parm)
 {
 	while (exitFlag == false)
 	{
-		if (queForward.Empty()) continue;
+		// 阻塞并等待信号唤醒
+		WaitForSingleObject(hSignalSend, INFINITE);
+		ResetEvent(hSignalSend);
 
 		mtxQueForward.lock(); // Lock
 		DataPacket *pack = queForward.Pop();
@@ -347,7 +381,9 @@ unsigned int _stdcall func_thread_handle(void *arg)
 {
 	while (exitFlag == false)
 	{
-		if (queHandle.Empty()) continue;
+		// 阻塞并等待信号唤醒
+		WaitForSingleObject(hSignalHandle, INFINITE);
+		ResetEvent(hSignalHandle);
 
 		mtxQueHandle.lock(); // Lock
 		DataPacket *pack = queHandle.Pop();
