@@ -7,10 +7,12 @@
 
 #define PACK_DATA_BYTE (80) // 数据包字节数
 
-#define PACK_TYPE_LOGIN  (-1) // 包类型 - 登录信息
-#define PACK_TYPE_ERROR  (-2) // 包类型 - 错误信息
-#define PACK_TYPE_DENY   (-3) // 包类型 - 拒绝登录
-#define PACK_TYPE_ACCEPT (-4) // 包类型 - 登录成功
+#define PACK_TYPE_LOGIN   (-1) // 包类型 - 登录信息
+#define PACK_TYPE_ERROR   (-2) // 包类型 - 错误信息
+#define PACK_TYPE_DENY    (-3) // 包类型 - 拒绝登录
+#define PACK_TYPE_ACCEPT  (-4) // 包类型 - 登录成功
+#define PACK_TYPE_NEWONE  (-5) // 包类型 - 玩家登录
+#define PACK_TYPE_OFFLINE (-6) // 包类型 - 玩家下线
 
 #define PACK_TAR_BOARDCAST (-1) // 包目标 - 广播
 #define PACK_TAR_SERVER    (-2) // 包目标 - 服务器处理
@@ -47,6 +49,15 @@ inline void SetPacketIdentify(DataPacket &packet, int identify)
 {
 	int *data = (int*)packet.data;
 	data[3] = identify;
+}
+
+
+// 设置包头内容
+inline void SetPacketHeadInfo(DataPacket &packet, int type, long milli, int identify)
+{
+	SetPacketType(packet, type);
+	SetPacketTime(packet, milli);
+	SetPacketIdentify(packet, identify);
 }
 
 

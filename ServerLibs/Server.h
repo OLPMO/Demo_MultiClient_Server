@@ -64,7 +64,7 @@ extern ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
 
 extern ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
 
-extern ServMemory<DataPacket> PacketPool; // 数据包内存池
+extern ServMemory<DataPacket> packetPool; // 数据包内存池
 
 
 extern std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
@@ -93,6 +93,72 @@ unsigned int _stdcall func_thread_recv(void *arg);   // 数据接收进程
 unsigned int _stdcall func_thread_send(void *arg);   // 数据发送进程
 
 unsigned int _stdcall func_thread_handle(void *arg); // 服务器数据处理进程
+
+
+// 内联函数
+
+
+// 申请一个新的数据包
+inline DataPacket* NewDataPacket(void)
+{
+	mtxPacketPool.lock();
+	DataPacket *pack = packetPool.Alloc();
+	mtxPacketPool.unlock();
+
+	return pack;
+}
+
+
+// 释放一个数据包内存
+inline void ReleaseDataPacket(DataPacket *pack)
+{
+	mtxPacketPool.lock();
+	packetPool.Release(pack);
+	mtxPacketPool.unlock();
+}
+
+
+// 从转发队列中取出一个数据包
+inline DataPacket* PopForwardPacket(void)
+{
+	mtxQueForward.lock();
+	DataPacket* pack = queForward.Pop();
+	mtxQueForward.unlock();
+	return pack;
+}
+
+
+// 将一个转发的数据包入队
+inline void PushForwardPacket(DataPacket *pack)
+{
+	mtxQueForward.lock();
+	queForward.Push(pack);
+	mtxQueForward.unlock();
+
+	SetEvent(hSignalSend);
+}
+
+
+// 从处理队列中取出一个数据包
+inline DataPacket* PopHandlePacket(void)
+{
+	mtxQueHandle.lock();
+	DataPacket *pack = queHandle.Pop();
+	mtxQueHandle.unlock();
+
+	return pack;
+}
+
+
+// 将一个处理数据包入队
+inline void PushHandlePacket(DataPacket *pack)
+{
+	mtxQueHandle.lock();
+	queHandle.Push(pack);
+	mtxQueHandle.unlock();
+
+	SetEvent(hSignalHandle);
+}
 
 
 #endif
