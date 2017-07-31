@@ -332,7 +332,7 @@ unsigned int _stdcall func_thread_send(void * parm)
 		}
 		else if (tar == PACK_TAR_BOARDCAST)
 		{
-			SetPacketIdentify(*pack, PACK_FROM_SERVER);
+			SetPacketIdentify(*pack, pack->from);
 			std::map<int, CLIENT_PTR>::iterator itor;
 			for (itor = mapClients.begin(); itor != mapClients.end(); itor++)
 			{
