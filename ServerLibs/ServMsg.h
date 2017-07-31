@@ -11,8 +11,7 @@
 #define PACK_TYPE_ERROR   (-2) // 包类型 - 错误信息
 #define PACK_TYPE_DENY    (-3) // 包类型 - 拒绝登录
 #define PACK_TYPE_ACCEPT  (-4) // 包类型 - 登录成功
-#define PACK_TYPE_NEWONE  (-5) // 包类型 - 玩家登录
-#define PACK_TYPE_OFFLINE (-6) // 包类型 - 玩家下线
+#define PACK_TYPE_OFFLINE (-5) // 包类型 - 玩家下线
 
 #define PACK_TAR_BOARDCAST (-1) // 包目标 - 广播
 #define PACK_TAR_SERVER    (-2) // 包目标 - 服务器处理

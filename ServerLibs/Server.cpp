@@ -157,8 +157,6 @@ bool UserValidate(const char *name, const char *pwd, int &id)
 // 接收连接进程
 unsigned int _stdcall func_thread_accept(void * parm)
 {
-	printf("I am waiting\n"); //////////////////////////////////////////
-
 	unsigned int id = 0;
 	int lenOfAddr = sizeof(sockaddr_in);
 	while (exitFlag == false)
@@ -167,7 +165,8 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		SOCKET sockClient = accept(sockServ, (sockaddr*)&addr, &lenOfAddr);
 		if (sockClient == INVALID_SOCKET) continue;
 
-		printf("Connection ... \n"); //////////////////////////////////////////
+		char ipBuffer[64] = { 0 };
+		inet_ntop(AF_INET, &addr.sin_addr, ipBuffer, sizeof(ipBuffer));
 
 		// 创建数据接收线程
 		CLIENT_PTR clientConn = new Client();
@@ -175,9 +174,10 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		clientConn->thread = (HANDLE)_beginthreadex(NULL, 0, func_thread_recv, (void*)clientConn, 0, &id);
 		if (clientConn->thread == NULL)
 		{
+			// 反馈服务器错误
 			DataPacket *pack = NewDataPacket();
 			SetPacketHeadInfo(*pack, PACK_TYPE_ERROR, (long)time(NULL), PACK_FROM_SERVER);
-			send(clientConn->sock, pack->data, sizeof(pack->data), 0);
+			SendPacket(clientConn->sock, pack);
 			ReleaseDataPacket(pack);
 
 			closesocket(clientConn->sock);
@@ -199,8 +199,6 @@ unsigned int _stdcall func_thread_recv(void * parm)
 		return 0;
 	}
 
-	printf("New Thread recv\n"); //////////////////////////////////////////
-
 	CLIENT_PTR clientConn = (CLIENT_PTR)parm;
 	clientConn->id = -1;
 
@@ -220,9 +218,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 			// 验证失败 - 发送登录被拒绝通知到请求客户端
 			char name[32] = { 0 }, pwd[32] = { 0 };
 			ParsePacketLogin(*packet, name, pwd);
-			printf("User name : %s.\n", name); ////////////////////////////////////////////////////////
-			printf("Password  : %s.\n", pwd);  ////////////////////////////////////////////////////////
-			if (UserValidate(name, pwd, clientConn->id) && mapClients.find(clientConn->id) == mapClients.end())
+			if (UserValidate(name, pwd, clientConn->id) && FindClientByID(clientConn->id) == nullptr)
 			{
 				loginSucc = true;
 				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
@@ -232,22 +228,13 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, (long)time(NULL), clientConn->id);
 				PushForwardPacket(packAccept);
 
-				DataPacket *packOnline = NewDataPacket(); // 玩家上线广播
-				packOnline->from = clientConn->id;
-				SetPacketHeadInfo(*packOnline, PACK_TYPE_NEWONE, (long)time(NULL), PACK_TAR_BOARDCAST);
-				PushForwardPacket(packOnline);
-
-				printf("[ %s ] Login Accepted\n", name); //////////////////////////////////////
-
 				break;
 
 			}
 			else
 			{
 				SetPacketHeadInfo(*packet, PACK_TYPE_DENY, (long)time(NULL), PACK_FROM_SERVER);
-				send(clientConn->sock, packet->data, sizeof(packet->data), 0);
-
-				printf("Login has been denied\n"); //////////////////////////////////////
+				SendPacket(clientConn->sock, packet);
 			}
 
 		} // End if type
@@ -258,13 +245,12 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	if (loginSucc)
 	{
 
-		printf("Login success \n"); //////////////////////////////////////////
-
 		// 接收数据包并分配
 		while (exitFlag == false && clientConn->sock > 0)
 		{
 			int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
-			if (lenOfData <= 0) break;
+			if (lenOfData < 0) break;
+			if (lenOfData == 0) continue;
 			packet->from = clientConn->id;
 
 			int tar = GetPacketIdentify(*packet);
@@ -275,25 +261,26 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				{
 					DataPacket *packOffline = NewDataPacket();
 					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), clientConn->id);
-					send(clientConn->sock, packOffline->data, sizeof(packOffline->data), 0);
+					SendPacket(clientConn->sock, packOffline);
 
 					break;
 
 				}
 
 				PushHandlePacket(packet);
-
+				packet = NewDataPacket();
 			}
 			else if (tar >= 0 || tar == PACK_TAR_BOARDCAST)
 			{
 				PushForwardPacket(packet);
+				packet = NewDataPacket();
+
+				SetEvent(hSignalSend);
 			}
 
-			packet = NewDataPacket();
+		} // End while - exitFlag
 
-		} // End while exitFlag
-
-	} // Login Succ
+	} // End if - Login Succ
 
 	ReleaseDataPacket(packet);
 
@@ -325,16 +312,12 @@ unsigned int _stdcall func_thread_send(void * parm)
 		int tar = GetPacketIdentify(*pack);
 		if (tar >= 0)
 		{
-			std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(tar);
-			if (itor != mapClients.end())
+			CLIENT_PTR ptrClient = FindClientByID(tar);
+			if (ptrClient != nullptr)
 			{
 				SetPacketIdentify(*pack, pack->from);
-				std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(tar);
-				if (itor != mapClients.end())
-					send(itor->second->sock, pack->data, sizeof(pack->data), 0);
+				SendPacket(ptrClient->sock, pack);
 			}
-
-			printf("A Message\n"); //////////////////////////////////////
 		}
 		else if (tar == PACK_TAR_BOARDCAST)
 		{
@@ -342,11 +325,9 @@ unsigned int _stdcall func_thread_send(void * parm)
 			std::map<int, CLIENT_PTR>::iterator itor;
 			for (itor = mapClients.begin(); itor != mapClients.end(); itor++)
 			{
-				if (itor->second->id == pack->from) continue;
-				send(itor->second->sock, pack->data, sizeof(pack->data), 0);
+				if (itor->second->id != pack->from) 
+					SendPacket(itor->second->sock, pack);
 			}
-
-			printf("A Board cast\n"); //////////////////////////////////////
 
 		}
 

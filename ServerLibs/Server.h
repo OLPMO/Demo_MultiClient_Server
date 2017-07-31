@@ -161,4 +161,20 @@ inline void PushHandlePacket(DataPacket *pack)
 }
 
 
+// 发送一个数据包
+inline void SendPacket(SOCKET sock, DataPacket *pack)
+{
+	send(sock, pack->data, sizeof(pack->data), 0);
+}
+
+
+// 获取客户端信息 - 客户端ID
+inline CLIENT_PTR FindClientByID(int id)
+{
+	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(id);
+	if (itor != mapClients.end()) return (itor->second);
+	return nullptr;
+}
+
+
 #endif
