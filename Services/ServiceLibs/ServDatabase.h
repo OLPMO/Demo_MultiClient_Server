@@ -14,7 +14,6 @@
 using namespace std;
 class ServDatabase{
 public:
-	static bool UserValidate(const string name, const string password, int *id);
 	static vector<ServDbResult> Query(string strSQL);
 private:
 	static MYSQL mqServ2Db;

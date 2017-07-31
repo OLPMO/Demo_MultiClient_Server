@@ -29,47 +29,6 @@ MYSQL *ServDatabase::GetDbInstance() {
 	return pServ2DbSock;
 }
 
-bool ServDatabase::UserValidate(const string strName, const string strPassword, int *pId) {
-	MYSQL *pDbSock = GetDbInstance();
-
-	//根据name来查询用户信息
-	string strSQL("SELECT * FROM users where `name` =  \'");
-	strSQL = strSQL + strName+"\'";
-
-	//cout << strSQL <<endl ;
-	//strSQL.c_str():把string类型转换为char*类型
-	if (mysql_query(pDbSock, strSQL.c_str())) {
-		printf("Query Failed:%s", mysql_error(pDbSock));
-		return false;
-	}
-	MYSQL_RES *pResult;
-	if (!(pResult = mysql_store_result(pDbSock))){
-		printf("Failed to store result:%s", mysql_error(pDbSock));
-		return false;
-	}
-	int uLine = (unsigned)mysql_num_rows(pResult);
-	if (uLine == 0) {
-		return false;
-	}
-	MYSQL_ROW row;
-	/**
-	* MYSQL_ROW STDCALL mysql_fetch_row(MYSQL_RES *result);
-	* 检索行
-	*/
-	row = mysql_fetch_row(pResult);
-	if (mysql_num_fields(pResult)<USERS_FIELD_NUM) {
-		return false;
-	}
-	//解析所获得的结果
-	string strDbUserId(row[0]);
-	string strDbUserName(row[1]);
-	string strDbUserPass(row[2]);
-	if (strPassword == strDbUserPass) {
-		*pId = stoi(strDbUserId);
-		return true;
-	}
-	return false;
-}
 
 vector<ServDbResult> ServDatabase::Query(string strSQL){
 	MYSQL *pDbSock = GetDbInstance();
@@ -81,7 +40,7 @@ vector<ServDbResult> ServDatabase::Query(string strSQL){
 		return vecSdrResult;
 	}
 	int nAffectLine = (unsigned)mysql_affected_rows(pDbSock);
-	//cout << "in the fun: " << nAffectLine << endl;
+
 	vecSdrResult.clear();
 	if (nAffectLine <= 0) {
 		MYSQL_RES *pResult;
@@ -105,14 +64,11 @@ vector<ServDbResult> ServDatabase::Query(string strSQL){
 			*/
 			msrRow = mysql_fetch_row(pResult);
 			for (int j = 0; j<nFieldNum; j++) {
-				//blob    
 				MYSQL_FIELD *pMsFieldTemp = pField + j;
 				string strFieldName(pMsFieldTemp->name);
 				sdrResult.Set(strFieldName,msrRow[j]);
 			}
-			vecSdrResult.push_back(sdrResult);
-
-			
+			vecSdrResult.push_back(sdrResult);	
 		}
 		
 	}else{
@@ -121,7 +77,6 @@ vector<ServDbResult> ServDatabase::Query(string strSQL){
 		vecSdrResult.push_back(sdrResult);
 		
 	}
-	//cout << "in the fun:"<<vecSdrResult.size() << endl;;
+	
 	return vecSdrResult;
-
 }
