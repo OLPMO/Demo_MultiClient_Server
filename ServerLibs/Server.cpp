@@ -36,8 +36,8 @@ std::mutex mtxPacketPool; // 包内存池互斥量
 
 // 函数实现
 
-// 启动
-bool Start(unsigned short port)
+// 启动 - 端口号 / 强制凝聚(false表示取消自动分组聚合)
+bool Start(unsigned short port, bool forceCoalesce /* = false */)
 {
 	if (sockServ) Close();
 	exitFlag = false;
@@ -49,6 +49,15 @@ bool Start(unsigned short port)
 
 	sockServ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sockServ == INVALID_SOCKET) return false;
+
+	// 禁用数据包分组算法
+	// 会以牺牲网络带宽为代价来加快数据包发送速度
+	// 在需要发送大量小数据包时使用
+	if (forceCoalesce == false)
+	{
+		int optval = 1;
+		setsockopt(sockServ, IPPROTO_TCP, TCP_NODELAY, (char*)&optval, sizeof(optval));
+	}
 
 	sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
@@ -108,12 +117,12 @@ bool Start(unsigned short port)
 // 关闭
 void Close(void)
 {
-	if (sockServ == 0) return;
+	if (sockServ == INVALID_SOCKET) return;
 
 	exitFlag = true;
 
 	closesocket(sockServ);
-	sockServ = 0;
+	sockServ = INVALID_SOCKET;
 
 	queHandle.Clear();
 	queForward.Clear();
@@ -205,7 +214,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	// 等待登录信息
 	bool loginSucc = false;
 	DataPacket *packet = NewDataPacket();
-	while (exitFlag == false && clientConn->sock > 0)
+	while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 	{
 		int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
 		if (lenOfData <= 0) break;
@@ -214,7 +223,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 		if (type == PACK_TYPE_LOGIN)
 		{
 			// 接收到登录信息并验证
-			// 验证成功 - 发送登录被接受通知到请求客户端 / 广播玩家上线信息
+			// 验证成功 - 发送登录被接受通知到请求客户端
 			// 验证失败 - 发送登录被拒绝通知到请求客户端
 			char name[32] = { 0 }, pwd[32] = { 0 };
 			ParsePacketLogin(*packet, name, pwd);
@@ -246,11 +255,10 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	{
 
 		// 接收数据包并分配
-		while (exitFlag == false && clientConn->sock > 0)
+		while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 		{
 			int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
-			if (lenOfData < 0) break;
-			if (lenOfData == 0) continue;
+			if (lenOfData <= 0) break;
 			packet->from = clientConn->id;
 
 			int tar = GetPacketIdentify(*packet);
@@ -287,6 +295,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(clientConn->id);
 	if (clientConn->id != -1 && itor != mapClients.end()) mapClients.erase(itor);
 	closesocket(clientConn->sock);
+	clientConn->sock = INVALID_SOCKET;
 	delete clientConn;
 
 	_endthreadex(0);

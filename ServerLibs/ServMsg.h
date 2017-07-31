@@ -30,24 +30,21 @@ typedef struct DataPacket
 // 设置包类型
 inline void SetPacketType(DataPacket &packet, int type)
 {
-	int *data = (int*)packet.data;
-	data[0] = type;
+	((int*)packet.data)[0] = type;
 }
 
 
 // 设置包时间
 inline void SetPacketTime(DataPacket &packet, long milli)
 {
-	long *time = (long*)&packet.data[4];
-	*time = milli;
+	*((long*)&packet.data[4]) = milli;
 }
 
 
 // 设置包ID
 inline void SetPacketIdentify(DataPacket &packet, int identify)
 {
-	int *data = (int*)packet.data;
-	data[3] = identify;
+	((int*)packet.data)[3] = identify;
 }
 
 
@@ -63,24 +60,21 @@ inline void SetPacketHeadInfo(DataPacket &packet, int type, long milli, int iden
 // 获取包类型
 inline int GetPacketType(const DataPacket &packet)
 {
-	int *data = (int*)packet.data;
-	return data[0];
+	return ((int*)packet.data)[0];
 }
 
 
 // 获取包时间
 inline long GetPacketTime(const DataPacket &packet)
 {
-	long *time = (long*)&packet.data[4];
-	return (*time);
+	return ((long*)&packet.data[4])[0];
 }
 
 
 // 获取包ID
 inline int GetPacketIdentify(const DataPacket &packet)
 {
-	int *data = (int*)packet.data;
-	return data[3];
+	return ((int*)packet.data)[3];
 }
 
 

@@ -79,7 +79,7 @@ extern std::mutex mtxPacketPool; // 包内存池互斥量
 // 函数声明
 
 
-bool Start(unsigned short port); // 启动
+bool Start(unsigned short port, bool forceCoalesce = false); // 启动
 
 void Close(void); // 关闭
 
