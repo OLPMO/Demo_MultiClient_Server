@@ -75,53 +75,53 @@ vector<ServDbResult> ServDatabase::Query(string strSQL){
 	MYSQL *pDbSock = GetDbInstance();
 	vector<ServDbResult> vecSdrResult;
 
-	//cout << strSQL <<endl ;
 	//strSQL.c_str():把string类型转换为char*类型
 	if (mysql_query(pDbSock, strSQL.c_str())) {
 		printf("Query Failed:%s", mysql_error(pDbSock));
 		return vecSdrResult;
 	}
 	int nAffectLine = (unsigned)mysql_affected_rows(pDbSock);
-	if (nAffectLine == 0) {
+	//cout << "in the fun: " << nAffectLine << endl;
+	vecSdrResult.clear();
+	if (nAffectLine <= 0) {
 		MYSQL_RES *pResult;
 		if (!(pResult = mysql_store_result(pDbSock))){
 			printf("Failed to store result:%s", mysql_error(pDbSock));
 			return vecSdrResult;
 		}
-		ServDbResult sdrResult;
+	
 		int nRowsLine = (unsigned)mysql_num_rows(pResult);
-		sdrResult.SetAffectedRows(nRowsLine);
-		//获得字段数  
-		int nFieldNum = mysql_num_fields(pResult);
-		MYSQL_FIELD *pField(NULL);
-		pField = mysql_fetch_fields(pResult);
-		for (int j = 0; j<nFieldNum; j++){
-			//blob    
-			MYSQL_FIELD *pMsFieldTemp = pField + j;
-			string strFieldName(pMsFieldTemp->name);
-			sdrResult.SetFiledName(strFieldName);
-		}
-		MYSQL_ROW msrRow;
-		/**
-		* MYSQL_ROW STDCALL mysql_fetch_row(MYSQL_RES *result);
-		* 检索行
-		*/
-		msrRow = mysql_fetch_row(pResult);
-		
-		//解析所获得的结果
-		string strDbUserId(row[0]);
-		string strDbUserName(row[1]);
-		string strDbUserPass(row[2]);
-		if (strPassword == strDbUserPass) {
-			*pId = stoi(strDbUserId);
+		for (int i = 0; i < nRowsLine;i++) {
+			ServDbResult sdrResult;
+			//sdrResult.SetResultRows(nRowsLine);
+			//获得字段数  
+			int nFieldNum = mysql_num_fields(pResult);
+			MYSQL_FIELD *pField(NULL);
+			pField = mysql_fetch_fields(pResult);
+			MYSQL_ROW msrRow;
+			/**
+			* MYSQL_ROW STDCALL mysql_fetch_row(MYSQL_RES *result);
+			* 检索行
+			*/
+			msrRow = mysql_fetch_row(pResult);
+			for (int j = 0; j<nFieldNum; j++) {
+				//blob    
+				MYSQL_FIELD *pMsFieldTemp = pField + j;
+				string strFieldName(pMsFieldTemp->name);
+				sdrResult.Set(strFieldName,msrRow[j]);
+			}
+			vecSdrResult.push_back(sdrResult);
 
+			
 		}
+		
 	}else{
 		ServDbResult sdrResult;
 		sdrResult.SetAffectedRows(nAffectLine);
 		vecSdrResult.push_back(sdrResult);
-		return vecSdrResult;
+		
 	}
-	
-	
+	//cout << "in the fun:"<<vecSdrResult.size() << endl;;
+	return vecSdrResult;
+
 }

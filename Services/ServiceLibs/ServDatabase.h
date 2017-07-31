@@ -1,12 +1,12 @@
 #ifndef SERV_DATABASE_H
 #define SERV_DATABASE_H
 
-
 #include <cstdio>
 #include <string>
 #include <mysql.h>
-#include "ServDbResult.h"
+#include <iostream>
 #include <vector>
+#include "ServDbResult.h"
 #pragma comment(lib,"libmysql.lib")
 
 #define USERS_FIELD_NUM 3
