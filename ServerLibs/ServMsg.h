@@ -23,6 +23,7 @@
 typedef struct DataPacket
 {
 	int from;
+	int bytes; // 有效数据长度
 	char data[PACK_DATA_BYTE];
 } DATA_PACKET, *DATA_PACKET_PTR;
 

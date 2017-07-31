@@ -164,7 +164,7 @@ inline void PushHandlePacket(DataPacket *pack)
 // 发送一个数据包
 inline void SendPacket(SOCKET sock, DataPacket *pack)
 {
-	send(sock, pack->data, sizeof(pack->data), 0);
+	send(sock, pack->data, (pack->bytes > 0 ? pack->bytes : sizeof(pack->data)), 0);
 }
 
 

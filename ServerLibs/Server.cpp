@@ -233,6 +233,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
 				
 				DataPacket *packAccept = NewDataPacket(); // 登录成功反馈
+				packAccept->bytes = 16;
 				packAccept->from = PACK_FROM_SERVER;
 				SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, (long)time(NULL), clientConn->id);
 				PushForwardPacket(packAccept);
@@ -257,8 +258,8 @@ unsigned int _stdcall func_thread_recv(void * parm)
 		// 接收数据包并分配
 		while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 		{
-			int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
-			if (lenOfData <= 0) break;
+			packet->bytes = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
+			if (packet->bytes <= 0) break;
 			packet->from = clientConn->id;
 
 			int tar = GetPacketIdentify(*packet);
@@ -268,6 +269,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				if (GetPacketType(*packet) == PACK_TYPE_OFFLINE)
 				{
 					DataPacket *packOffline = NewDataPacket();
+					packOffline->bytes = 16;
 					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), clientConn->id);
 					SendPacket(clientConn->sock, packOffline);
 
