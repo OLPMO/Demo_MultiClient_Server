@@ -8,9 +8,9 @@ namespace NetParsePackageService
     class ParsePackageService
     {
         private static void GetPosition(ref byte[] btRecv,ref PackageMetaData pmdData) {
-            double lfX = BitConverter.ToDouble(btRecv, pmdData.nHeaderLen);
-            double lfY = BitConverter.ToDouble(btRecv, pmdData.nHeaderLen + sizeof(double));
-            double lfZ = BitConverter.ToDouble(btRecv, pmdData.nHeaderLen + 2*sizeof(double));
+            double lfX = BitConverter.ToSingle(btRecv, pmdData.nHeaderLen);
+            double lfY = BitConverter.ToSingle(btRecv, pmdData.nHeaderLen + sizeof(System.Single));
+            double lfZ = BitConverter.ToSingle(btRecv, pmdData.nHeaderLen + 2*sizeof(System.Single));
             pmdData.Set("x",lfX.ToString());
             pmdData.Set("y",lfY.ToString());
             pmdData.Set("z",lfZ.ToString());
