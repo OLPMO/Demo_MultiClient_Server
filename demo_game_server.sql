@@ -10,3 +10,5 @@ create table if not exists users (
 insert into users(`name`,`password`) values('mike','mike123');
 insert into users(`name`,`password`) values('tom','tom123');
 insert into users(`name`,`password`) values('jerry','jerry123');
+insert into users(`name`,`password`) values('123456','123456123');
+
