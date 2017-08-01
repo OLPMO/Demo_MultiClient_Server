@@ -2,7 +2,9 @@
 #define SERV_DB_RESULT_H
 #include <map>
 #include <string>
-using namespace std;
+
+typedef std::string ServString;
+
 class ServDbResult{
 public:
 	friend class ServDatabase;
@@ -24,10 +26,10 @@ public:
 		mapResult = _tmp.mapResult;
 		return *this;
 	}
-	string Get(string strKey);
+	ServString Get(ServString strKey);
 private:
-	map<string, string> mapResult;
-	void Set(string strKey, string strVal);
+	std::map<ServString, ServString> mapResult;
+	void Set(ServString strKey, ServString strVal);
 	
 	void SetAffectedRows(int nRows);
 	void SetResultRows(int nRows);

@@ -7,9 +7,9 @@ void ServDbResult::SetResultRows(int nRows){
 //	nResultRows = nRows;
 }
 
-void ServDbResult::Set(string strKey, string strVal) {
+void ServDbResult::Set(ServString strKey, ServString strVal) {
 	mapResult[strKey] = strVal;
 }
-string ServDbResult::Get(string strKey) {
+ServString ServDbResult::Get(ServString strKey) {
 	return mapResult[strKey];
 }

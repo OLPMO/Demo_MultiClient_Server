@@ -1,13 +1,14 @@
 #include "DbService.h"
-using namespace std;
-bool DbService::UserValidate(const string strName, const string strPassword, int * id) {
+
+bool DbService::UserValidate(const ServString strName, const ServString strPassword, int * id) {
 	//构造sql语句
-	string strSQL = string("select * from game_server.users where name = \'");
+	ServString strSQL = ServString("select * from game_server.users where name = \'");
+	
 	strSQL = strSQL + strName + "\'";
-	cout << strSQL << endl;
-	vector<ServDbResult> vecDbResult = ServDatabase::Query(strSQL);
+	std::cout << strSQL << std::endl;
+	std::vector<ServDbResult> vecDbResult = ServDatabase::Query(strSQL);
 	if (vecDbResult.size()!=1){
-		cout << "dbr size:" << vecDbResult.size() << endl;
+		std::cout << "dbr size:" << vecDbResult.size() << std::endl;
 			
 		//存在同名客户或客户不存在视为登录失败
 		return false;

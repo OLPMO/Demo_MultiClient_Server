@@ -11,16 +11,16 @@
 
 #define USERS_FIELD_NUM 3
 
-using namespace std;
 class ServDatabase{
 public:
-	static vector<ServDbResult> Query(string strSQL);
+	static std::vector<ServDbResult> Query(ServString strSQL);
+	static MYSQL *SetDbInstance(char *pStrDbHost, char *pStrUserName, char *pStrUserPass, char *pStrDbName, int nPort);
 private:
 	static MYSQL mqServ2Db;
 	static MYSQL *pServ2DbSock;
 	static MYSQL *GetDbInstance();
 	static MYSQL *Connect2MySQL(char *pStrDbHost, char *pStrUserName, char *pStrUserPass, char *pStrDbName, int nPort);
-	static MYSQL *SetDbInstance(char *pStrDbHost, char *pStrUserName, char *pStrUserPass, char *pStrDbName, int nPort);
+
 };
 
 #endif

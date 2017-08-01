@@ -3,7 +3,7 @@
 #include "./ServiceLibs/ServDatabase.h"
 class DbService{
 public:
-	static bool UserValidate(const string strName, const string strPassword, int * id);
+	static bool UserValidate(const ServString strName, const ServString strPassword, int * id);
 private:
 
 };

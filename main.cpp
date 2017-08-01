@@ -27,7 +27,7 @@ int main(void)
 
 	Close();
 
-	cout << "[SERVER] : Has been closed" << endl;
+	cout << "[SERVER] : Has Been Closed" << endl;
 	
 
 	return 0;
