@@ -21,7 +21,7 @@ namespace Assets.Scripts
 
         private byte[] Data; //这里是用于发送的数据，包含了用户数据以及数据包的头
 
-        public DataPackage(int nUid)
+        public DataPackage(int nUid,int nPackageSize)
         {
 
             SizeOfDataHead = sizeof(DataHead);
@@ -66,11 +66,31 @@ namespace Assets.Scripts
         public DataPackage AddPositon(Vector3 Pos)
         {
             this.dhPackageHead.nPakcageType = 0;
-            this.AddDataHead(dhPackageHead);
-            PackageTool.AddVector(ref Data, Pos);
+            this.AddDataHead(this.dhPackageHead);
+            
+           // PackageTool.AddVector(ref Data, Pos);
+            float fX = (float)Pos.x;
+            float fY = (float)Pos.y;
+            float fZ = (float)Pos.z;
+            byte[] arrByteX = BitConverter.GetBytes(fX);
+            byte[] arrByteY = BitConverter.GetBytes(fY);
+            byte[] arrByteZ = BitConverter.GetBytes(fZ);
+
+            Array.Copy(arrByteX, 0, this.Data,this.nSizeOfData, sizeof(System.Single));
+            Array.Copy(arrByteY, 0, this.Data, this.nSizeOfData + sizeof(System.Single), sizeof(System.Single));
+            Array.Copy(arrByteZ, 0, this.Data, this.nSizeOfData + 2*sizeof(System.Single), sizeof(System.Single));
             return this;
         }
         public DataPackage AddLoginInfo(string strName,string strPass) {
+            this.dhPackageHead.nPakcageType = -1;
+            this.AddDataHead(this.dhPackageHead);
+            strName += '\0';
+            strPass += '\0';
+            byte[] arrByteName = System.Text.Encoding.ASCII.GetBytes(strName);
+            Array.Copy(arrByteName, 0, this.Data, this.nSizeOfDataHead, sizeof(arrByteName));
+            byte[] arrBytePass = System.Text.Encoding.ASCII.GetBytes(strPass);
+            Array.Copy(arrBytePass, 0, this.Data, this.nSizeOfDataHead + sizeof(arrByteName), sizeof(arrBytePass));
+            return this;
         }
         public void PackPlayerUp()  //这些打包函数由永康完成
         {
