@@ -1,5 +1,5 @@
 #include "Server.h"
-
+#include "ServDB.h"
 
 // 全局变量
 
@@ -139,27 +139,7 @@ void Close(void)
 // 验证是否可登陆并返回ID
 bool UserValidate(const char *name, const char *pwd, int &id)
 {
-	// TODO 重写这个函数 - 当前函数只为测试
-
-	if (strcmp(name, "1031193940") == 0)
-	{
-		if (strcmp(pwd, "123456")) return false;
-		id = 0;
-	}
-	else if (strcmp(name, "17691071306") == 0)
-	{
-		if (strcmp(pwd, "456789")) return false;
-		id = 1;
-	}
-	else if (strcmp(name, "15829075532") == 0)
-	{
-		if (strcmp(pwd, "789456123")) return false;
-		id = 2;
-	}
-	else
-		return false;
-
-	return true;
+	return DB_Validate_User(name, pwd, id);
 }
 
 

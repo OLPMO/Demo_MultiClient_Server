@@ -21,18 +21,19 @@ MYSQL *ServDatabase::SetDbInstance(char *pStrDbHost, char *pStrUserName, char *p
 	pServ2DbSock = Connect2MySQL(pStrDbHost, pStrUserName, pStrUserPass, pStrDbName, nPort);
 	return pServ2DbSock;
 }
+
 MYSQL *ServDatabase::GetDbInstance() {
 	if (pServ2DbSock == NULL) {
 		pServ2DbSock = SetDbInstance("localhost", "root", "123456", "game_server", 3306);
-		
+
 	}
 	return pServ2DbSock;
 }
 
 
-vector<ServDbResult> ServDatabase::Query(string strSQL){
+std::vector<ServDbResult> ServDatabase::Query(ServString strSQL){
 	MYSQL *pDbSock = GetDbInstance();
-	vector<ServDbResult> vecSdrResult;
+	std::vector<ServDbResult> vecSdrResult;
 
 	//strSQL.c_str():把string类型转换为char*类型
 	if (mysql_query(pDbSock, strSQL.c_str())) {
@@ -65,7 +66,7 @@ vector<ServDbResult> ServDatabase::Query(string strSQL){
 			msrRow = mysql_fetch_row(pResult);
 			for (int j = 0; j<nFieldNum; j++) {
 				MYSQL_FIELD *pMsFieldTemp = pField + j;
-				string strFieldName(pMsFieldTemp->name);
+				ServString strFieldName(pMsFieldTemp->name);
 				sdrResult.Set(strFieldName,msrRow[j]);
 			}
 			vecSdrResult.push_back(sdrResult);	

@@ -15,16 +15,28 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Server.h">
+    <ClInclude Include="ServerLibs\Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServQueue.h">
+    <ClInclude Include="ServerLibs\ServMemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServMsg.h">
+    <ClInclude Include="ServerLibs\ServMsg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServMemory.h">
+    <ClInclude Include="ServerLibs\ServQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Services\DbService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Services\ServiceLibs\ServDatabase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Services\ServiceLibs\ServDbResult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerLibs\ServDB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +44,16 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Server.cpp">
+    <ClCompile Include="ServerLibs\Server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Services\DbService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Services\ServiceLibs\ServDatabase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Services\ServiceLibs\ServDbResult.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
