@@ -32,10 +32,11 @@ namespace Assets.Scripts.NetWorkModule
             return SocketManagerInstance;
         }
 
+
         public void ConnectToServer()
         {
             IPAddress IPServer = IPAddress.Parse("10.20.73.61");
-            IPEndPoint PortServer = new IPEndPoint(IPServer, 7777);
+            IPEndPoint PortServer = new IPEndPoint(IPServer, 8000);
             ClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
             {

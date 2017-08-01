@@ -1,5 +1,5 @@
 #include "Server.h"
-
+#include "ServDB.h"
 
 // 全局变量
 
@@ -13,13 +13,19 @@ HANDLE hThreadSend[SEND_THREAD_NUM];
 
 HANDLE hThreadHandle[HANDLE_THREAD_NUM];
 
-std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
+HANDLE hSignalSend;   // 发送线程启动信号
+
+HANDLE hSignalHandle; // 处理线程启动信号
+
 
 ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
 
 ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
 
 ServMemory<DataPacket> packetPool; // 数据包内存池
+
+
+std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
 
 std::mutex mtxQueForward; // 转发队列互斥量
 
@@ -30,8 +36,8 @@ std::mutex mtxPacketPool; // 包内存池互斥量
 
 // 函数实现
 
-// 启动
-bool Start(unsigned short port)
+// 启动 - 端口号 / 强制凝聚(false表示取消自动分组聚合)
+bool Start(unsigned short port, bool forceCoalesce /* = false */)
 {
 	if (sockServ) Close();
 	exitFlag = false;
@@ -43,6 +49,15 @@ bool Start(unsigned short port)
 
 	sockServ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sockServ == INVALID_SOCKET) return false;
+
+	// 禁用数据包分组算法
+	// 会以牺牲网络带宽为代价来加快数据包发送速度
+	// 在需要发送大量小数据包时使用
+	if (forceCoalesce == false)
+	{
+		int optval = 1;
+		setsockopt(sockServ, IPPROTO_TCP, TCP_NODELAY, (char*)&optval, sizeof(optval));
+	}
 
 	sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
@@ -70,6 +85,7 @@ bool Start(unsigned short port)
 	}
 
 	// 创建数据发送进程
+	hSignalSend = CreateEvent(NULL, true, true, TEXT("signal_send"));
 	for (int i = 0; i < SEND_THREAD_NUM; i++)
 	{
 		unsigned int id = 0;
@@ -82,6 +98,7 @@ bool Start(unsigned short port)
 	}
 
 	// 创建服务器数据处理进程
+	hSignalHandle = CreateEvent(NULL, true, true, TEXT("signal_send"));
 	for (int i = 0; i < HANDLE_THREAD_NUM; i++)
 	{
 		unsigned int id = 0;
@@ -100,15 +117,18 @@ bool Start(unsigned short port)
 // 关闭
 void Close(void)
 {
-	if (sockServ == 0) return;
+	if (sockServ == INVALID_SOCKET) return;
 
 	exitFlag = true;
 
 	closesocket(sockServ);
-	sockServ = 0;
+	sockServ = INVALID_SOCKET;
 
 	queHandle.Clear();
 	queForward.Clear();
+
+	for (int i = 0; i < SEND_THREAD_NUM; i++) SetEvent(hSignalSend);
+	for (int i = 0; i < HANDLE_THREAD_NUM; i++) SetEvent(hSignalHandle);
 
 	hThreadAccept = 0;
 	memset(hThreadSend, 0, sizeof(hThreadSend));
@@ -119,35 +139,13 @@ void Close(void)
 // 验证是否可登陆并返回ID
 bool UserValidate(const char *name, const char *pwd, int &id)
 {
-	// TODO 重写这个函数 - 当前函数只为测试
-
-	if (strcmp(name, "1031193940") == 0)
-	{
-		if (strcmp(pwd, "123456")) return false;
-		id = 0;
-	}
-	else if (strcmp(name, "17691071306") == 0)
-	{
-		if (strcmp(pwd, "456789")) return false;
-		id = 1;
-	}
-	else if (strcmp(name, "15829075532") == 0)
-	{
-		if (strcmp(pwd, "789456123")) return false;
-		id = 2;
-	}
-	else
-		return false;
-
-	return true;
+	return DB_Validate_User(name, pwd, id);
 }
 
 
 // 接收连接进程
 unsigned int _stdcall func_thread_accept(void * parm)
 {
-	printf("I am waiting\n"); //////////////////////////////////////////
-
 	unsigned int id = 0;
 	int lenOfAddr = sizeof(sockaddr_in);
 	while (exitFlag == false)
@@ -156,7 +154,8 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		SOCKET sockClient = accept(sockServ, (sockaddr*)&addr, &lenOfAddr);
 		if (sockClient == INVALID_SOCKET) continue;
 
-		printf("Connection ... \n"); //////////////////////////////////////////
+		char ipBuffer[64] = { 0 };
+		inet_ntop(AF_INET, &addr.sin_addr, ipBuffer, sizeof(ipBuffer));
 
 		// 创建数据接收线程
 		CLIENT_PTR clientConn = new Client();
@@ -164,18 +163,11 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		clientConn->thread = (HANDLE)_beginthreadex(NULL, 0, func_thread_recv, (void*)clientConn, 0, &id);
 		if (clientConn->thread == NULL)
 		{
-			mtxPacketPool.lock(); // lock
-			DataPacket *pack = packetPool.Alloc();
-			mtxPacketPool.unlock(); // Unlock
-			
-			SetPacketType(*pack, PACK_TYPE_ERROR);
-			SetPacketTime(*pack, (long)time(NULL));
-			SetPacketIdentify(*pack, PACK_FROM_SERVER);
-			send(clientConn->sock, pack->data, sizeof(pack->data), 0);
-
-			mtxPacketPool.lock(); // Lock
-			packetPool.Release(pack);
-			mtxPacketPool.unlock(); // Unlock
+			// 反馈服务器错误
+			DataPacket *pack = NewDataPacket();
+			SetPacketHeadInfo(*pack, PACK_TYPE_ERROR, (long)time(NULL), PACK_FROM_SERVER);
+			SendPacket(clientConn->sock, pack);
+			ReleaseDataPacket(pack);
 
 			closesocket(clientConn->sock);
 			delete clientConn;
@@ -196,46 +188,48 @@ unsigned int _stdcall func_thread_recv(void * parm)
 		return 0;
 	}
 
-	printf("New Thread recv\n"); //////////////////////////////////////////
-
 	CLIENT_PTR clientConn = (CLIENT_PTR)parm;
 	clientConn->id = -1;
 
 	// 等待登录信息
-	mtxPacketPool.lock(); // Lock
-	DataPacket *packet = packetPool.Alloc();
-	mtxPacketPool.unlock(); // Unlock
-
 	bool loginSucc = false;
-	while (exitFlag == false)
+	DataPacket *packet = NewDataPacket();
+	while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 	{
+		exitFlag=true;
 		int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
+
+		printf("the received  Lenth:  %d", lenOfData);
+		printf("接收到的内容是：%f,%f,%f", *((float*)(packet->data)), *(float*)(packet->data+sizeof(float)), *(float*)(packet->data+2*sizeof(float)));
 		if (lenOfData <= 0) break;
 
 		int type = GetPacketType(*packet);
 		if (type == PACK_TYPE_LOGIN)
 		{
-			// TODO - 登录操作
+			// 接收到登录信息并验证
+			// 验证成功 - 发送登录被接受通知到请求客户端
+			// 验证失败 - 发送登录被拒绝通知到请求客户端
 			char name[32] = { 0 }, pwd[32] = { 0 };
 			ParsePacketLogin(*packet, name, pwd);
-			printf("User name : %s.\n", name);
-			printf("Password  : %s.\n", pwd);
-			if (UserValidate(name, pwd, clientConn->id) && mapClients.find(clientConn->id) == mapClients.end())
+			if (UserValidate(name, pwd, clientConn->id) && FindClientByID(clientConn->id) == nullptr)
 			{
-				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
 				loginSucc = true;
+				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
+				
+				DataPacket *packAccept = NewDataPacket(); // 登录成功反馈
+				packAccept->bytes = 16;
+				packAccept->from = PACK_FROM_SERVER;
+				SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, (long)time(NULL), clientConn->id);
+				PushForwardPacket(packAccept);
+
+				break;
+
 			}
 			else
 			{
-				printf("Login has been denied\n"); //////////////////////////////////////
-
-				SetPacketType(*packet, PACK_TYPE_DENY);
-				SetPacketTime(*packet, (long)time(NULL));
-				SetPacketIdentify(*packet, PACK_FROM_SERVER);
-				send(clientConn->sock, packet->data, sizeof(packet->data), 0);
+				SetPacketHeadInfo(*packet, PACK_TYPE_DENY, (long)time(NULL), PACK_FROM_SERVER);
+				SendPacket(clientConn->sock, packet);
 			}
-
-			break;
 
 		} // End if type
 
@@ -245,49 +239,49 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	if (loginSucc)
 	{
 
-		printf("Login success \n"); //////////////////////////////////////////
-
 		// 接收数据包并分配
-		while (exitFlag == false)
+		while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 		{
-			int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
-			if (lenOfData <= 0) 
-				break;
-			else
+			packet->bytes = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
+			if (packet->bytes <= 0) break;
+			packet->from = clientConn->id;
+
+			int tar = GetPacketIdentify(*packet);
+			if (tar == PACK_TAR_SERVER)
 			{
-				packet->from = clientConn->id;
+				// 是否为下线信息 - 是则发送下线广播
+				if (GetPacketType(*packet) == PACK_TYPE_OFFLINE)
+				{
+					DataPacket *packOffline = NewDataPacket();
+					packOffline->bytes = 16;
+					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), clientConn->id);
+					SendPacket(clientConn->sock, packOffline);
 
-				int tar = GetPacketIdentify(*packet);
-				if (tar == PACK_TAR_SERVER)
-				{
-					mtxQueHandle.lock(); // Lock
-					queHandle.Push(packet);
-					mtxQueHandle.unlock(); // Unlock
-				}
-				else if (tar >= 0 || tar == PACK_TAR_BOARDCAST)
-				{
-					mtxQueForward.lock(); // Lock
-					queForward.Push(packet);
-					mtxQueForward.unlock(); // Unlock
+					break;
+
 				}
 
-				mtxPacketPool.lock(); // Lock
-				packet = packetPool.Alloc();
-				mtxPacketPool.unlock(); // Unlock
+				PushHandlePacket(packet);
+				packet = NewDataPacket();
+			}
+			else if (tar >= 0 || tar == PACK_TAR_BOARDCAST)
+			{
+				PushForwardPacket(packet);
+				packet = NewDataPacket();
 
+				SetEvent(hSignalSend);
 			}
 
-		} // End while exitFlag
+		} // End while - exitFlag
 
-	} // Login Succ
+	} // End if - Login Succ
 
-	mtxPacketPool.lock(); // Lock
-	packetPool.Release(packet);
-	mtxPacketPool.unlock(); // Unlock
+	ReleaseDataPacket(packet);
 
 	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(clientConn->id);
 	if (clientConn->id != -1 && itor != mapClients.end()) mapClients.erase(itor);
 	closesocket(clientConn->sock);
+	clientConn->sock = INVALID_SOCKET;
 	delete clientConn;
 
 	_endthreadex(0);
@@ -300,41 +294,39 @@ unsigned int _stdcall func_thread_send(void * parm)
 {
 	while (exitFlag == false)
 	{
-		if (queForward.Empty()) continue;
+		// 阻塞并等待信号唤醒
+		WaitForSingleObject(hSignalSend, INFINITE);
 
-		mtxQueForward.lock(); // Lock
-		DataPacket *pack = queForward.Pop();
-		mtxQueForward.unlock(); // Unlock
-		if (pack == nullptr) continue;
+		DataPacket *pack = PopForwardPacket();
+		if (pack == nullptr)
+		{
+			ResetEvent(hSignalSend);
+			continue;
+		}
 
 		int tar = GetPacketIdentify(*pack);
 		if (tar >= 0)
 		{
-			std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(tar);
-			if (itor != mapClients.end())
+			CLIENT_PTR ptrClient = FindClientByID(tar);
+			if (ptrClient != nullptr)
 			{
 				SetPacketIdentify(*pack, pack->from);
-				std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(tar);
-				if (itor != mapClients.end())
-					send(itor->second->sock, pack->data, sizeof(pack->data), 0);
+				SendPacket(ptrClient->sock, pack);
 			}
-
 		}
 		else if (tar == PACK_TAR_BOARDCAST)
 		{
-			SetPacketIdentify(*pack, PACK_FROM_SERVER);
+			SetPacketIdentify(*pack, pack->from);
 			std::map<int, CLIENT_PTR>::iterator itor;
 			for (itor = mapClients.begin(); itor != mapClients.end(); itor++)
 			{
-				if (itor->second->id == pack->from) continue;
-				send(itor->second->sock, pack->data, sizeof(pack->data), 0);
+				if (itor->second->id != pack->from) 
+					SendPacket(itor->second->sock, pack);
 			}
 
 		}
 
-		mtxPacketPool.lock(); // Lock
-		packetPool.Release(pack);
-		mtxPacketPool.unlock(); // Unlock
+		ReleaseDataPacket(pack);
 	}
 
 	_endthreadex(0);
@@ -347,20 +339,21 @@ unsigned int _stdcall func_thread_handle(void *arg)
 {
 	while (exitFlag == false)
 	{
-		if (queHandle.Empty()) continue;
+		// 阻塞并等待信号唤醒
+		WaitForSingleObject(hSignalHandle, INFINITE);
 
-		mtxQueHandle.lock(); // Lock
-		DataPacket *pack = queHandle.Pop();
-		mtxQueHandle.unlock(); // Unlock
-		if (pack == nullptr) continue;
+		DataPacket *pack = PopHandlePacket();
+		if (pack == nullptr)
+		{
+			ResetEvent(hSignalHandle);
+			continue;
+		}
 
 		int type = GetPacketType(*pack);
 
 		// TODO 处理消息
 
-		mtxPacketPool.lock(); // Lock
-		packetPool.Release(pack);
-		mtxPacketPool.unlock(); // Unlock
+		ReleaseDataPacket(pack);
 
 	}
 

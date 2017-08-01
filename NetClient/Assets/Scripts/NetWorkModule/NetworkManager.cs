@@ -49,18 +49,44 @@ namespace Assets.Scripts.NetWorkModule
         //这里向服务器发送Vector3变量，在这次Demo中这里是本地玩家的坐标信息
         public void SendMessageToServer(Vector3 obj)
         {
-            byte[] Temp = new byte[100];
+            byte[] Temp = new byte[4096];
             //包头：类型 | 时间戳 | 发送目标
             //类型是与服务器约定好的
-            Temp[0] = BitConverter.GetBytes(1);
-            Temp[sizeof(int)] = BitConverter.GetBytes((long)13432);
-            Temp[sizeof(int)+sizeof(long)] = BitConverter.GetBytes(2);
-            //包的内容
+            int startIndex = 0;
+            for(int i=startIndex,j=0; i<startIndex+sizeof(int); i+=1,j+=1)
+                Temp[i] = BitConverter.GetBytes(1)[j];
+            startIndex += sizeof(int);
 
-            Temp[sizeof(int) + sizeof(long)+sizeof(int)] = BitConverter.GetBytes(obj.x)[0];
-            Temp[sizeof(int) + sizeof(long) + 2*sizeof(int)] = BitConverter.GetBytes(obj.y)[0];
-            Temp[sizeof(int) + sizeof(long) + 3 * sizeof(int)] = BitConverter.GetBytes(obj.z)[0];
+            for (int i = startIndex, j = 0; i < startIndex+sizeof(long); i += 1, j += 1)
+                Temp[i] = BitConverter.GetBytes((long)13432)[j];
+            startIndex += sizeof(long);
+
+            for (int i = startIndex, j = 0; i < sizeof(int); i += 1, j += 1)
+                Temp[i] = BitConverter.GetBytes(2)[j];
+            startIndex += sizeof(int);
+            //包的内容
+            for (int i = startIndex, j = 0; i < sizeof(float); i += 1, j += 1)
+                Temp[i] = BitConverter.GetBytes(obj.x)[j];
+            startIndex += sizeof(float);
+
+            for (int i = startIndex, j = 0; i < sizeof(float); i += 1, j += 1)
+                Temp[i] = BitConverter.GetBytes(obj.y)[j];
+            startIndex += sizeof(float);
+
+            for (int i = startIndex, j = 0; i < sizeof(float); i += 1, j += 1)
+                Temp[i] = BitConverter.GetBytes(obj.z)[j];
+            startIndex += sizeof(float);
+
+            
+            Debug.Log(Temp[3]);
+
+           
             int res=SocketManager.GetSingleton().GetSocket().Send(Temp);
+            Debug.Log(res);
+
+            ServDataPacket pack = ServPackParser.MakePacket<int>(0, 0, 0, 0);
+            ServerConnecter.sharedInstance().Send(ref pack);
+
         }
 
 
@@ -75,7 +101,7 @@ namespace Assets.Scripts.NetWorkModule
         public void  RecvMessageFromServer()
         {
             Thread thread = new Thread(recvFromServer);
-       
+            thread.Start();
             //解析包头
             this.nPackageType = BitConverter.ToInt32(recv, 0);
             this.nPackageTime = BitConverter.ToInt64(recv,sizeof(int));
@@ -88,9 +114,9 @@ namespace Assets.Scripts.NetWorkModule
         public Vector3 GetTransform()
         {
             int nHeaderLen = sizeof(int)+sizeof(int)+sizeof(long);
-            float fX = (float)BitConverter.ToDouble(recv, nHeaderLen);
-            float fY = (float)BitConverter.ToDouble(recv, nHeaderLen+sizeof(double));
-            float fZ = (float)BitConverter.ToDouble(recv, nHeaderLen+2*sizeof(double));
+            float fX = (float)BitConverter.ToInt32(recv, nHeaderLen-1);
+            float fY = (float)BitConverter.ToInt32(recv, nHeaderLen-1+sizeof(int));
+            float fZ = (float)BitConverter.ToInt32(recv, nHeaderLen-1+2*sizeof(int));
             return new Vector3(fX, fY, fZ);
         }
 

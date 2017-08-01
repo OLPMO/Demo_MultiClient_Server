@@ -36,9 +36,11 @@ public class PlayerController : MonoBehaviour {
                 var curPos = NetworkManager.GetSingleton().GetTransform();
                 transform.position = curPos;
 
+                Debug.Log(curPos);
                 return;
             }
             NetworkManager.GetSingleton().SendMessageToServer(transform.position);
+            Debug.Log(transform.position);
         }
         Move(x,0,z);
 	}
