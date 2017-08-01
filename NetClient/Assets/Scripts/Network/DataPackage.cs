@@ -12,7 +12,9 @@ namespace Assets.Scripts
         private struct DataHead
         {
             //这个由永康负责编写，这里保存了数据包的头的结构
-            int a;
+            int nPakcageType;
+            long ldTime;
+            int nUid;
         }
         private static int SizeOfDataHead;  //数据包的头
 
@@ -20,14 +22,15 @@ namespace Assets.Scripts
 
         public DataPackage(int nPackageSize)
         {
-            Data = new byte[nPackageSize];     
+            SizeOfDataHead = sizeof(DataHead);
+            Data = new byte[nPackageSize];
             PackageTool.AddReset();
         }
 
         public static int GetSizeOfDataHead()  
         {
-            //这个待定，因为数据包的头需要永康完善
-            return 0;
+            
+            return sizeof(DataHead);
         }
 
         public byte[] GetDataRef()
@@ -36,10 +39,14 @@ namespace Assets.Scripts
         }
 
         #region 这部分负责想发送的数据中添加用户数据，但是内部调用的是数据类型转换为byte型的工具函数
-        public DataPackage AddDataHead(int a)
+        public DataPackage AddDataHead(DataHead dhPackageHead)
         {
             //这部分永康完成
             //永康需要
+            //  Array.Copy(BitConverter.GetBytes((double)62.5465), 0, recv, 2*sizeof(System.Int32) + 2*sizeof(double)+sizeof(System.Int64), sizeof(double));
+            Array.Copy(BitConverter.GetBytes(dhPackageHead.nPackageType),0,this.Data,0,sizeof(int));
+            Array.Copy(BitConverter.GetBytes(dhPackageHead.ldTime), 0, this.Data, sizeof(int), sizeof(long));
+            Array.Copy(BitConverter.GetBytes(dhPackageHead.nUid), 0, this.Data, sizeof(int)+sizeof(long), sizeof(int));
             return this;
         }
 
