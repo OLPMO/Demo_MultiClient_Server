@@ -7,11 +7,12 @@ using UnityEngine;
 namespace Assets.Scripts.Network
 {
     //这是一个工具类，用于想数据包中添加对应的数据类型
+    //不能用于添加头信心
     static class PackageTool
     {
         private static int offset = DataPackage.GetSizeOfDataHead();
 
-        //由于BitConver。GetBytes()函数无法接收模版参数，这里选择全部不使用模版   
+        //由于BitConver.GetBytes()函数无法接收模版参数，这里选择全部不使用模版   
         public static void AddBaseType(ref byte[] packge, int data)
         {
             for (int i = 0; i < sizeof(int); i += 1)

@@ -9,22 +9,26 @@ namespace Assets.Scripts
 {
     class DataPackage: DataInterface
     {
-        private struct DataHead
+        public struct DataHead
         {
             //这个由永康负责编写，这里保存了数据包的头的结构
             int nPakcageType;
             long ldTime;
             int nUid;
         }
-        private static int SizeOfDataHead;  //数据包的头
+        private DataHead dhPackageHead;
+        private static int nSizeOfDataHead;  //数据包的头
 
         private byte[] Data; //这里是用于发送的数据，包含了用户数据以及数据包的头
 
-        public DataPackage(int nPackageSize)
+        public DataPackage(int nUid)
         {
+
             SizeOfDataHead = sizeof(DataHead);
             Data = new byte[nPackageSize];
-            PackageTool.AddReset();
+            //  PackageTool.AddReset();
+
+            this.dhPackageHead.nUid = nUid;
         }
 
         public static int GetSizeOfDataHead()  
@@ -39,8 +43,10 @@ namespace Assets.Scripts
         }
 
         #region 这部分负责想发送的数据中添加用户数据，但是内部调用的是数据类型转换为byte型的工具函数
-        public DataPackage AddDataHead(DataHead dhPackageHead)
+        private DataPackage AddDataHead(DataHead dhPackageHead)
         {
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            this.ldTime = Convert.ToInt64(ts.TotalMilliseconds);
             //这部分永康完成
             //永康需要
             //  Array.Copy(BitConverter.GetBytes((double)62.5465), 0, recv, 2*sizeof(System.Int32) + 2*sizeof(double)+sizeof(System.Int64), sizeof(double));
@@ -50,19 +56,22 @@ namespace Assets.Scripts
             return this;
         }
 
-        public DataPackage AddHealth(int hud)
+        public DataPackage AddHealth(int nHp)
         {
-            PackageTool.AddBaseType(ref Data,hud);
-            
+            //  PackageTool.AddBaseType(ref Data,hud);
+            Array.Copy(BitConverter.GetBytes(nHp), 0, this.Data, this.nSizeOfDataHead, sizeof(int));
             return this;
         }
 
         public DataPackage AddPositon(Vector3 Pos)
         {
+            this.dhPackageHead.nPakcageType = 0;
+            this.AddDataHead(dhPackageHead);
             PackageTool.AddVector(ref Data, Pos);
             return this;
         }
-
+        public DataPackage AddLoginInfo(string strName,string strPass) {
+        }
         public void PackPlayerUp()  //这些打包函数由永康完成
         {
             
