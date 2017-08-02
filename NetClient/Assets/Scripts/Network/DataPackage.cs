@@ -7,30 +7,31 @@ using Assets.Scripts.Network;
 
 namespace Assets.Scripts
 {
-    class DataPackage: DataInterface
+    class DataPackage//: DataInterface
     {
-        public struct DataHead
+        private struct DataHead
         {
-            int nPakcageType;
-            long ldTime;
-            int nUid;
+            public int nPakcageType;
+            public int ldTime;
+            public int nUid;
         }
         private DataHead dhPackageHead;
         private static int nSizeOfDataHead;  //数据包的头
 
         private byte[] Data; //这里是用于发送的数据，包含了用户数据以及数据包的头
 
-        public DataPackage(int nUid,int nPackageSize)
+        public DataPackage(int nUid, int nPackageSize)
         {
 
             this.nSizeOfDataHead = sizeof(DataHead);
             Data = new byte[nPackageSize];
-  
+
             this.dhPackageHead.nUid = nUid;
         }
 
-        public static int GetSizeOfDataHead()  {
-            return sizeof(int)*2+sizeof(long);
+        public static int GetSizeOfDataHead()
+        {
+            return sizeof(int) * 2 + sizeof(long);
         }
 
         public byte[] GetDataRef()
@@ -46,15 +47,15 @@ namespace Assets.Scripts
              *  this.ldTime = Convert.ToInt64(ts.TotalMilliseconds);
             */
             this.dhPackageHead.ldTime = GlobalTimeController.sharedInstance().GetTimeSync();
-            Array.Copy(BitConverter.GetBytes(this.dhPackageHead.nPackageType),0,this.Data,0,sizeof(int));
-            Array.Copy(BitConverter.GetBytes(this.dhPackageHead.ldTime), 0, this.Data, sizeof(int), sizeof(long));
-            Array.Copy(BitConverter.GetBytes(this.dhPackageHead.nUid), 0, this.Data, sizeof(int)+sizeof(long), sizeof(int));
+            Array.Copy(BitConverter.GetBytes(this.dhPackageHead.nPackageType), 0, this.Data, 0, sizeof(int));
+            Array.Copy(BitConverter.GetBytes(dhPackageHead.ldTime), 0, this.Data, sizeof(int), sizeof(long));
+            Array.Copy(BitConverter.GetBytes(this.dhPackageHead.nUid), 0, this.Data, sizeof(int) + sizeof(long), sizeof(int));
             return this;
         }
 
         public DataPackage AddHealth(int nHp)
         {
-           
+
             Array.Copy(BitConverter.GetBytes(nHp), 0, this.Data, this.nSizeOfDataHead, sizeof(int));
             return this;
         }
@@ -63,7 +64,7 @@ namespace Assets.Scripts
         {
             this.dhPackageHead.nPakcageType = 0;
             this.AddDataHead();
-            
+
             float fX = (float)Pos.x;
             float fY = (float)Pos.y;
             float fZ = (float)Pos.z;
@@ -71,20 +72,21 @@ namespace Assets.Scripts
             byte[] arrByteY = BitConverter.GetBytes(fY);
             byte[] arrByteZ = BitConverter.GetBytes(fZ);
 
-            Array.Copy(arrByteX, 0, this.Data,this.nSizeOfData, sizeof(System.Single));
+            Array.Copy(arrByteX, 0, this.Data, this.nSizeOfData, sizeof(System.Single));
             Array.Copy(arrByteY, 0, this.Data, this.nSizeOfData + sizeof(System.Single), sizeof(System.Single));
-            Array.Copy(arrByteZ, 0, this.Data, this.nSizeOfData + 2*sizeof(System.Single), sizeof(System.Single));
+            Array.Copy(arrByteZ, 0, this.Data, this.nSizeOfData + 2 * sizeof(System.Single), sizeof(System.Single));
             return this;
         }
-        public DataPackage AddLoginInfo(string strName,string strPass) {
+        public DataPackage AddLoginInfo(string strName, string strPass)
+        {
             this.dhPackageHead.nPakcageType = -1;
             this.AddDataHead();
             strName += '\0';
             strPass += '\0';
             byte[] arrByteName = System.Text.Encoding.ASCII.GetBytes(strName);
-            Array.Copy(arrByteName, 0, this.Data, this.nSizeOfDataHead, sizeof(arrByteName));
-            byte[] arrBytePass = System.Text.Encoding.ASCII.GetBytes(strPass);
-            Array.Copy(arrBytePass, 0, this.Data, this.nSizeOfDataHead + sizeof(arrByteName), sizeof(arrBytePass));
+            array.copy(arrbytename, 0, this.data, this.nsizeofdatahead, sizeof(arrbytename));
+            byte[] arrbytepass = system.text.encoding.ascii.getbytes(strpass);
+            array.copy(arrbytepass, 0, this.data, this.nsizeofdatahead + sizeof(arrbytename), sizeof(arrbytepass));
             return this;
         }
         #endregion

@@ -8,9 +8,11 @@ namespace Assets.Scripts.Network
 {
     interface DataInterface
     {
-        DataPackage AddDataHead(int a);
+        DataPackage AddDataHead();
         DataPackage AddHealth(int hud);
         DataPackage AddPositon(Vector3 Pos);
+
+
 
         //void PackUp();
     }

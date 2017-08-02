@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using Assets.Scripts.NetWorkModule;
 
 public class PlayerController : MonoBehaviour {
 
@@ -33,13 +32,13 @@ public class PlayerController : MonoBehaviour {
         {
             if (GetIsLocal() == false)
             {
-                var curPos = NetworkManager.GetSingleton().GetTransform();
+                var curPos = new Vector3(1.0f,1.0f,1.0f); ;// = NetworkManager.GetSingleton().GetTransform();
                 transform.position = curPos;
 
                 Debug.Log(curPos);
                 return;
             }
-            NetworkManager.GetSingleton().SendMessageToServer(transform.position);
+            //NetworkManager.GetSingleton().SendMessageToServer(transform.position);
             Debug.Log(transform.position);
         }
         Move(x,0,z);
