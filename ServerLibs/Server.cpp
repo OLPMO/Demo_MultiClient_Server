@@ -197,11 +197,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	DataPacket *packet = NewDataPacket();
 	while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 	{
-		exitFlag=true;
 		int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
-
-		printf("the received  Lenth:  %d", lenOfData);
-		printf("接收到的内容是：%f,%f,%f", *((float*)(packet->data)), *(float*)(packet->data+sizeof(float)), *(float*)(packet->data+2*sizeof(float)));
 		if (lenOfData <= 0) break;
 
 		int type = GetPacketType(*packet);
@@ -358,8 +354,19 @@ unsigned int _stdcall func_thread_handle(void *arg)
 		}
 
 		int type = GetPacketType(*pack);
+		switch (type)
+		{
+		case PACK_TYPE_SYNC: // 发送时间同步消息
+			DataPacket *packSync = NewDataPacket();
+			packSync->bytes = 16;
+			packSync->from = PACK_FROM_SERVER;
+			SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, (long)time(NULL), pack->from);
+			PushForwardPacket(packSync);
+			break;
 
-		// TODO 处理消息
+		default:
+			break;
+		}
 
 		ReleaseDataPacket(pack);
 
