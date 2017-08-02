@@ -5,6 +5,7 @@
 
 bool exitFlag;
 
+
 SOCKET sockServ;
 
 HANDLE hThreadAccept;
@@ -248,10 +249,13 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				// 是否为下线信息 - 是则发送下线广播
 				if (GetPacketType(*packet) == PACK_TYPE_OFFLINE)
 				{
+					printf("Client Offline - %d\n", clientConn->id);
+
 					DataPacket *packOffline = NewDataPacket();
 					packOffline->bytes = 16;
-					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), clientConn->id);
-					SendPacket(clientConn->sock, packOffline);
+					packOffline->from = clientConn->id;
+					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), PACK_TAR_BOARDCAST);
+					PushForwardPacket(packOffline);
 
 					break;
 
@@ -260,7 +264,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				PushHandlePacket(packet);
 				packet = NewDataPacket();
 			}
-			else if (tar >= 0 || tar == PACK_TAR_BOARDCAST)
+			else
 			{
 				PushForwardPacket(packet);
 				packet = NewDataPacket();
@@ -300,17 +304,9 @@ unsigned int _stdcall func_thread_send(void * parm)
 			continue;
 		}
 
+		// 对数据进行转发
 		int tar = GetPacketIdentify(*pack);
-		if (tar >= 0)
-		{
-			CLIENT_PTR ptrClient = FindClientByID(tar);
-			if (ptrClient != nullptr)
-			{
-				SetPacketIdentify(*pack, pack->from);
-				SendPacket(ptrClient->sock, pack);
-			}
-		}
-		else if (tar == PACK_TAR_BOARDCAST)
+		if (tar == PACK_TAR_BOARDCAST)
 		{
 			SetPacketIdentify(*pack, pack->from);
 			std::map<int, CLIENT_PTR>::iterator itor;
@@ -320,6 +316,18 @@ unsigned int _stdcall func_thread_send(void * parm)
 					SendPacket(itor->second->sock, pack);
 			}
 
+		}
+		else
+		{
+			CLIENT_PTR ptrClient = nullptr;
+			if (tar >= 0) ptrClient = FindClientByID(tar);
+			else if(tar == PACK_TAR_FROM) ptrClient = FindClientByID(pack->from);
+
+			if (ptrClient != nullptr)
+			{
+				SetPacketIdentify(*pack, pack->from);
+				SendPacket(ptrClient->sock, pack);
+			}
 		}
 
 		ReleaseDataPacket(pack);

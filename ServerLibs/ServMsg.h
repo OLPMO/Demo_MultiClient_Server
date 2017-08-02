@@ -15,6 +15,7 @@
 
 #define PACK_TAR_BOARDCAST (-1) // 包目标 - 广播
 #define PACK_TAR_SERVER    (-2) // 包目标 - 服务器处理
+#define PACK_TAR_FROM      (-3) // 包目标 - 转发到来源
 
 #define PACK_FROM_SERVER (-1) // 包来源 - 服务器
 
