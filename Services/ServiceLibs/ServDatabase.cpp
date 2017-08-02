@@ -6,7 +6,6 @@ MYSQL* ServDatabase::Connect2MySQL(char *pStrDbHost,char *pStrUserName, char *pS
 
 	mysql_init(&mqServ2Db);
 	if (!(pServ2DbSock = mysql_real_connect(&mqServ2Db, pStrDbHost, pStrUserName, pStrUserPass, pStrDbName, nPort, NULL, 0))){
-		printf("Cannot connect to database:%s\n", mysql_error(pServ2DbSock));
 		return NULL;
 	}
 
@@ -37,7 +36,6 @@ std::vector<ServDbResult> ServDatabase::Query(ServString strSQL){
 
 	//strSQL.c_str():把string类型转换为char*类型
 	if (mysql_query(pDbSock, strSQL.c_str())) {
-		printf("Query Failed:%s", mysql_error(pDbSock));
 		return vecSdrResult;
 	}
 	int nAffectLine = (unsigned)mysql_affected_rows(pDbSock);
@@ -46,7 +44,6 @@ std::vector<ServDbResult> ServDatabase::Query(ServString strSQL){
 	if (nAffectLine <= 0) {
 		MYSQL_RES *pResult;
 		if (!(pResult = mysql_store_result(pDbSock))){
-			printf("Failed to store result:%s", mysql_error(pDbSock));
 			return vecSdrResult;
 		}
 	
