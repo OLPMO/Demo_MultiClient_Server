@@ -24,7 +24,7 @@ namespace Assets.Scripts
         public DataPackage(int nUid,int nPackageSize)
         {
 
-            SizeOfDataHead = sizeof(DataHead);
+            this.nSizeOfDataHead = sizeof(DataHead);
             Data = new byte[nPackageSize];
             //  PackageTool.AddReset();
 
@@ -34,7 +34,7 @@ namespace Assets.Scripts
         public static int GetSizeOfDataHead()  
         {
             
-            return sizeof(DataHead);
+            return sizeof(int)*2+sizeof(long);
         }
 
         public byte[] GetDataRef()
