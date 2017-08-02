@@ -249,8 +249,6 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				// 是否为下线信息 - 是则发送下线广播
 				if (GetPacketType(*packet) == PACK_TYPE_OFFLINE)
 				{
-					printf("Client Offline - %d\n", clientConn->id);
-
 					DataPacket *packOffline = NewDataPacket();
 					packOffline->bytes = 16;
 					packOffline->from = clientConn->id;
@@ -357,12 +355,14 @@ unsigned int _stdcall func_thread_handle(void *arg)
 		switch (type)
 		{
 		case PACK_TYPE_SYNC: // 发送时间同步消息
+		{
 			DataPacket *packSync = NewDataPacket();
 			packSync->bytes = 16;
 			packSync->from = PACK_FROM_SERVER;
 			SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, (long)time(NULL), pack->from);
 			PushForwardPacket(packSync);
 			break;
+		}
 
 		default:
 			break;

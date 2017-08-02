@@ -5,7 +5,6 @@ bool DbService::UserValidate(const ServString strName, const ServString strPassw
 	ServString strSQL = ServString("select * from game_server.users where name = \'");
 	
 	strSQL = strSQL + strName + "\'";
-	std::cout << strSQL << std::endl;
 	std::vector<ServDbResult> vecDbResult = ServDatabase::Query(strSQL);
 	if (vecDbResult.size()!=1){
 		std::cout << "dbr size:" << vecDbResult.size() << std::endl;
