@@ -197,7 +197,11 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	DataPacket *packet = NewDataPacket();
 	while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 	{
+		exitFlag=true;
 		int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
+
+		printf("the received  Lenth:  %d", lenOfData);
+		printf("接收到的内容是：%f,%f,%f", *((float*)(packet->data)), *(float*)(packet->data+sizeof(float)), *(float*)(packet->data+2*sizeof(float)));
 		if (lenOfData <= 0) break;
 
 		int type = GetPacketType(*packet);
