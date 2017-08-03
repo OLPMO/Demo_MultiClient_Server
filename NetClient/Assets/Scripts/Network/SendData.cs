@@ -13,11 +13,10 @@ namespace Assets.Scripts.Network
         private DataPackage SendPackage;
 
         //这里初始化一个SendData实例，并在内部创建一个用于发送的数据包
-        public SendData(int nPackageSize)
+        public SendData(int Uid ,int nPackageSize=80)
         {
-            SendPackage = new DataPackage(nPackageSize);
+            SendPackage = new DataPackage(Uid,nPackageSize);
         }
-
         
         public DataPackage GetDataPackage()
         {

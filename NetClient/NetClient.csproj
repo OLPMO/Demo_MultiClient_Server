@@ -13,11 +13,13 @@
     <TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>Unity Subset v3.5</TargetFrameworkProfile>
-    <CompilerResponseFile></CompilerResponseFile>
+    <CompilerResponseFile>
+    </CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows64:19</UnityBuildTarget>
     <UnityVersion>5.5.2f1</UnityVersion>
-    <RootNamespace></RootNamespace>
+    <RootNamespace>
+    </RootNamespace>
     <LangVersion>4</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -79,21 +81,17 @@
     <Compile Include="Assets\Scripts\GameSceneScripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Scripts\GameSceneScripts\Player\RemotePlayerSetUp.cs" />
     <Compile Include="Assets\Scripts\GameSceneScripts\SceneSetUp.cs" />
-    <Compile Include="Assets\Scripts\GloableTimeController.cs" />
-    <Compile Include="Assets\Scripts\LoginSceneScripts\Login.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\NetworkManager.cs" />
-    <Compile Include="Assets\Scripts\NetWorkModule\SocketManager.cs" />
+    <Compile Include="Assets\Scripts\GlobalController\GlobalNetController.cs" />
+    <Compile Include="Assets\Scripts\GlobalController\GlobalTimeController.cs" />
+    <Compile Include="Assets\Scripts\LoginSceneScripts\LoginAndTurnToGameScene.cs" />
     <Compile Include="Assets\Scripts\Network\DataInterface.cs" />
     <Compile Include="Assets\Scripts\Network\DataPackage.cs" />
-    <Compile Include="Assets\Scripts\Network\DataPoolInterface.cs" />
     <Compile Include="Assets\Scripts\Network\NetworkManager.cs" />
-    <Compile Include="Assets\Scripts\Network\PackageData.cs" />
     <Compile Include="Assets\Scripts\Network\PackageTool.cs" />
     <Compile Include="Assets\Scripts\Network\ReceiveData.cs" />
     <Compile Include="Assets\Scripts\Network\SendData.cs" />
-    <Compile Include="Assets\Scripts\ServPackQueue.cs" />
-    <Compile Include="Assets\Scripts\ServPacket.cs" />
-    <Compile Include="Assets\Scripts\ServerConnecter.cs" />
+    <Compile Include="Assets\Scripts\Services\PackageMetaData.cs" />
+    <Compile Include="Assets\Scripts\Services\ParsePackageService.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

@@ -41,11 +41,12 @@ namespace Assets.Scripts
         private NetworkManager()
         {
             //这里需要添加设置服务器IP和端口号的代码
+            ServerIP = "10.20.73.61";
+            ServerPort = 8000;
 
-
-            ConToServer("",1234, ConSucced);
+            ConToServer("10.20.73.61",8000, ConSucced);
             Debug.Log("Now ,we can communicate with server !");
-            TryReConnect();
+            //TryReConnect();
         }
 
         #region 这里负责网络连接、包括socket的创建，与服务器的连接操作，断线重连操作等
@@ -132,7 +133,7 @@ namespace Assets.Scripts
                     //这里用于判断是否掉线
                     Debug.Log("Here we testing whether disconnected or not!");
                     int sendNum = ClientSocket.Send(Encoding.ASCII.GetBytes("test connected"),SocketFlags.None);
-                    if (sendNum >= Encoding.ASCII.GetByteCount("test connected"))
+                    if (sendNum >= 0)
                     {
                         Debug.Log("We still connected! Let's sleep 5 second until another check!");
                         Thread.Sleep(5000);
@@ -142,17 +143,17 @@ namespace Assets.Scripts
                 catch (Exception ex)
                 {
                     //这里用于重连
-                    Debug.Log("Disconnected error message is: " + ex.Message);
-                    Debug.Log("We disconnected! We should Reconnect!");
+                    //Debug.Log("Disconnected error message is: " + ex.Message);
+                    //Debug.Log("We disconnected! We should Reconnect!");
 
-                    if (ClientSocket == null)
-                    {
-                        Debug.Log("Socket is invalid, we should recreate a socket!");
-                        while (ClientSocket == null)
-                            CreateSocketTcp();
-                    }
-                    ConToServer(ServerIP, ServerPort, ConSucced);
-                    Debug.Log("Here we reconnected! ");   
+                    //if (ClientSocket == null)
+                    //{
+                    //    Debug.Log("Socket is invalid, we should recreate a socket!");
+                    //    while (ClientSocket == null)
+                    //        CreateSocketTcp();
+                    //}
+                    //ConToServer(ServerIP, ServerPort, ConSucced);
+                    //Debug.Log("Here we reconnected! ");   
                 }
             }
         }
@@ -169,8 +170,21 @@ namespace Assets.Scripts
             }
             catch (Exception ex)
             {
-                Debug.Log("Sending data failed! Error message was : "+ex.Message);
+                Debug.Log("Disconnected error message is: " + ex.Message);
+                Debug.Log("We disconnected! So,We should Reconnect!");
                 return -1;
+            }
+            finally
+            {
+                Debug.Log("Here we check if disconnected!");
+                if (ClientSocket == null)
+                {
+                    Debug.Log("Socket is invalid, we should recreate a socket!");
+                    while (ClientSocket == null)
+                        CreateSocketTcp();
+                }
+                ConToServer(ServerIP, ServerPort, ConSucced);
+                Debug.Log("Here we tried to reconnected! ");
             }
         }
 
