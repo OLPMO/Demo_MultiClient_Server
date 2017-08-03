@@ -166,7 +166,7 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		{
 			// 反馈服务器错误
 			DataPacket *pack = NewDataPacket();
-			SetPacketHeadInfo(*pack, PACK_TYPE_ERROR, (long)time(NULL), PACK_FROM_SERVER);
+			SetPacketHeadInfo(*pack, PACK_TYPE_ERROR, (long)GetTickCount(), PACK_FROM_SERVER);
 			SendPacket(clientConn->sock, pack);
 			ReleaseDataPacket(pack);
 
@@ -192,49 +192,76 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	CLIENT_PTR clientConn = (CLIENT_PTR)parm;
 	clientConn->id = -1;
 
+	printf("Connection request\n");
+
 	// 等待登录信息
+	// 在客户端验证登录信息到来之前的数据包将全部被丢弃
 	bool loginSucc = false;
-	DataPacket *packet = NewDataPacket();
+	DataPacket *packetLogin = NewDataPacket();
 	while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
 	{
-		int lenOfData = recv(clientConn->sock, packet->data, sizeof(packet->data), 0);
+		int lenOfData = recv(clientConn->sock, packetLogin->data, sizeof(packetLogin->data), 0);
 		if (lenOfData <= 0) break;
 
-		int type = GetPacketType(*packet);
+		int type = GetPacketType(*packetLogin);
 		if (type == PACK_TYPE_LOGIN)
 		{
 			// 接收到登录信息并验证
 			// 验证成功 - 发送登录被接受通知到请求客户端
 			// 验证失败 - 发送登录被拒绝通知到请求客户端
 			char name[32] = { 0 }, pwd[32] = { 0 };
-			ParsePacketLogin(*packet, name, pwd);
+			ParsePacketLogin(*packetLogin, name, pwd);
 			if (UserValidate(name, pwd, clientConn->id) && FindClientByID(clientConn->id) == nullptr)
 			{
 				loginSucc = true;
 				mapClients.insert(std::pair<int, CLIENT_PTR>(clientConn->id, clientConn));
-				
-				DataPacket *packAccept = NewDataPacket(); // 登录成功反馈
+
+				// 向登录成功的客户端发送登录成功反馈
+				DataPacket *packAccept = NewDataPacket();
 				packAccept->bytes = 16;
 				packAccept->from = PACK_FROM_SERVER;
-				SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, (long)time(NULL), clientConn->id);
+				SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, (long)GetTickCount(), clientConn->id);
 				PushForwardPacket(packAccept);
+
+				printf("User name : %s\n", name); // DEBUG
 
 				break;
 
 			}
 			else
 			{
-				SetPacketHeadInfo(*packet, PACK_TYPE_DENY, (long)time(NULL), PACK_FROM_SERVER);
-				SendPacket(clientConn->sock, packet);
+				SetPacketHeadInfo(*packetLogin, PACK_TYPE_DENY, (long)GetTickCount(), PACK_FROM_SERVER);
+				SendPacket(clientConn->sock, packetLogin);
+
+				printf("Fail to login - %s - %s\n", name, pwd); // DEBUG 
 			}
+
+		}
+		else if (type == PACK_TYPE_OFFLINE)
+		{
+			// 下线信息 - 发送下线广播并退出
+			DataPacket *packOffline = NewDataPacket();
+			packOffline->bytes = 16;
+			packOffline->from = clientConn->id;
+			SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)GetTickCount(), PACK_TAR_BOARDCAST);
+			PushForwardPacket(packOffline);
+
+			break;
 
 		} // End if type
 
 	} // End while exitFlag
 
+	ReleaseDataPacket(packetLogin);
 
+
+	// 登录成功 - 循环接收数据包并处理
+	// 如果登录失败 - 则不执行if内语句
 	if (loginSucc)
 	{
+		
+
+		DataPacket *packet = NewDataPacket();
 
 		// 接收数据包并分配
 		while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
@@ -252,15 +279,15 @@ unsigned int _stdcall func_thread_recv(void * parm)
 					DataPacket *packOffline = NewDataPacket();
 					packOffline->bytes = 16;
 					packOffline->from = clientConn->id;
-					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)time(NULL), PACK_TAR_BOARDCAST);
+					SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, (long)GetTickCount(), PACK_TAR_BOARDCAST);
 					PushForwardPacket(packOffline);
 
 					break;
-
 				}
 
 				PushHandlePacket(packet);
 				packet = NewDataPacket();
+
 			}
 			else
 			{
@@ -272,10 +299,12 @@ unsigned int _stdcall func_thread_recv(void * parm)
 
 		} // End while - exitFlag
 
+		ReleaseDataPacket(packet);
+
 	} // End if - Login Succ
 
-	ReleaseDataPacket(packet);
 
+	// 从客户端记录表中删除当前客户端记录
 	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(clientConn->id);
 	if (clientConn->id != -1 && itor != mapClients.end()) mapClients.erase(itor);
 	closesocket(clientConn->sock);
@@ -295,6 +324,7 @@ unsigned int _stdcall func_thread_send(void * parm)
 		// 阻塞并等待信号唤醒
 		WaitForSingleObject(hSignalSend, INFINITE);
 
+		// 从队列中取出一个数据包
 		DataPacket *pack = PopForwardPacket();
 		if (pack == nullptr)
 		{
@@ -306,6 +336,7 @@ unsigned int _stdcall func_thread_send(void * parm)
 		int tar = GetPacketIdentify(*pack);
 		if (tar == PACK_TAR_BOARDCAST)
 		{
+			// 广播 - 转发给所有客户端
 			SetPacketIdentify(*pack, pack->from);
 			std::map<int, CLIENT_PTR>::iterator itor;
 			for (itor = mapClients.begin(); itor != mapClients.end(); itor++)
@@ -317,6 +348,7 @@ unsigned int _stdcall func_thread_send(void * parm)
 		}
 		else
 		{
+			// 定点转发 - 查找目标客户端并发送
 			CLIENT_PTR ptrClient = nullptr;
 			if (tar >= 0) ptrClient = FindClientByID(tar);
 			else if(tar == PACK_TAR_FROM) ptrClient = FindClientByID(pack->from);
@@ -344,6 +376,7 @@ unsigned int _stdcall func_thread_handle(void *arg)
 		// 阻塞并等待信号唤醒
 		WaitForSingleObject(hSignalHandle, INFINITE);
 
+		// 从队列中取出一个待处理的数据包
 		DataPacket *pack = PopHandlePacket();
 		if (pack == nullptr)
 		{
@@ -359,7 +392,7 @@ unsigned int _stdcall func_thread_handle(void *arg)
 			DataPacket *packSync = NewDataPacket();
 			packSync->bytes = 16;
 			packSync->from = PACK_FROM_SERVER;
-			SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, (long)time(NULL), pack->from);
+			SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, (long)GetTickCount(), pack->from);
 			PushForwardPacket(packSync);
 			break;
 		}

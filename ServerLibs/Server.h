@@ -4,7 +4,6 @@
 #include <map>
 #include <mutex>
 
-#include <time.h>
 #include <memory.h>
 #include <process.h>
 
@@ -29,6 +28,8 @@
 #define SEND_THREAD_NUM (8) // 发送消息线程的数量
 
 #define HANDLE_THREAD_NUM (5) // 服务器处理线程数量
+
+#define HEART_SYNC_INTERVAL_MS (1000) // 心跳同步间隔
 
 
 // 客户端
@@ -93,6 +94,8 @@ unsigned int _stdcall func_thread_recv(void *arg);   // 数据接收进程
 unsigned int _stdcall func_thread_send(void *arg);   // 数据发送进程
 
 unsigned int _stdcall func_thread_handle(void *arg); // 服务器数据处理进程
+
+unsigned int _stdcall func_thread_heartsync(void *arg); // 心跳同步进程
 
 
 // 内联函数
