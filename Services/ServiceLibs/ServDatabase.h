@@ -3,9 +3,12 @@
 
 #include <cstdio>
 #include <string>
-#include <mysql.h>
 #include <iostream>
 #include <vector>
+
+#include <Windows.h>
+#include <mysql.h>
+
 #include "ServDbResult.h"
 #pragma comment(lib,"libmysql.lib")
 

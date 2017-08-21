@@ -33,7 +33,9 @@ MYSQL *ServDatabase::GetDbInstance() {
 std::vector<ServDbResult> ServDatabase::Query(ServString strSQL){
 	MYSQL *pDbSock = GetDbInstance();
 	std::vector<ServDbResult> vecSdrResult;
-
+	if(pDbSock == NULL){
+		return vecSdrResult;
+	}
 	//strSQL.c_str():把string类型转换为char*类型
 	if (mysql_query(pDbSock, strSQL.c_str())) {
 		return vecSdrResult;
