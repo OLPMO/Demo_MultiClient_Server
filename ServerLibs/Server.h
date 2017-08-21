@@ -25,11 +25,9 @@
 
 #define PACKET_SIZE_BYTE (64) // 数据包大小
 
-#define SEND_THREAD_NUM (8) // 发送消息线程的数量
+#define SEND_THREAD_NUM (3) // 发送消息线程的数量
 
-#define HANDLE_THREAD_NUM (5) // 服务器处理线程数量
-
-#define HEART_SYNC_INTERVAL_MS (1000) // 心跳同步间隔
+#define HANDLE_THREAD_NUM (2) // 服务器处理线程数量
 
 
 // 客户端
@@ -86,6 +84,8 @@ void Close(void); // 关闭
 
 bool UserValidate(const char *name, const char *pwd, int &id); // 验证是否可登陆并返回ID
 
+bool WaitForLoginPacket(CLIENT_PTR pClientConn); // 等待登录信息
+
 
 unsigned int _stdcall func_thread_accept(void *arg); // 连接接收进程
 
@@ -99,6 +99,13 @@ unsigned int _stdcall func_thread_heartsync(void *arg); // 心跳同步进程
 
 
 // 内联函数
+
+
+// 获取当前时间戳
+inline unsigned long GetServTimeStamp(void)
+{
+	return (unsigned long)GetTickCount();
+}
 
 
 // 申请一个新的数据包
@@ -164,6 +171,15 @@ inline void PushHandlePacket(DataPacket *pack)
 }
 
 
+// 获取客户端信息 - 客户端ID
+inline CLIENT_PTR FindClientByID(int id)
+{
+	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(id);
+	if (itor != mapClients.end()) return (itor->second);
+	return nullptr;
+}
+
+
 // 发送一个数据包
 inline void SendPacket(SOCKET sock, DataPacket *pack)
 {
@@ -171,12 +187,56 @@ inline void SendPacket(SOCKET sock, DataPacket *pack)
 }
 
 
-// 获取客户端信息 - 客户端ID
-inline CLIENT_PTR FindClientByID(int id)
+// 登录请求接受
+// 添加当前用户到用户表并反馈登录成功信息
+inline void LoginRequestAccept(CLIENT_PTR pClient)
 {
-	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(id);
-	if (itor != mapClients.end()) return (itor->second);
-	return nullptr;
+	mapClients.insert(std::pair<int, CLIENT_PTR>(pClient->id, pClient));
+
+	// 向登录成功的客户端发送登录成功反馈
+	DataPacket *packAccept = NewDataPacket();
+	packAccept->bytes = PACK_HEAD_BYTE;
+	packAccept->from = pClient->id;
+	SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, GetServTimeStamp(), pClient->id);
+	PushForwardPacket(packAccept);
+}
+
+
+// 登录请求拒绝
+// 向客户端发送登录拒绝的反馈信息
+inline void LoginRequestDeny(CLIENT_PTR pClient)
+{
+	// 向客户端发送服务器拒绝登录的反馈
+	DataPacket *packDeny = NewDataPacket();
+	packDeny->bytes = PACK_HEAD_BYTE;
+	SetPacketHeadInfo(*packDeny, PACK_TYPE_DENY, GetServTimeStamp(), PACK_FROM_SERVER);
+	SendPacket(pClient->sock, packDeny);
+}
+
+
+// 时间同步回馈消息
+// 向客户端发送带有服务器时间的数据包
+inline void TimeSyncRequestFeedback(int idFrom)
+{
+	DataPacket *packSync = NewDataPacket();
+	packSync->bytes = PACK_HEAD_BYTE;
+	packSync->from = PACK_FROM_SERVER;
+	SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, GetServTimeStamp(), idFrom);
+	PushForwardPacket(packSync);
+
+	printf("Send a time sync : %ld\n", GetPacketTime(*packSync));
+}
+
+
+// 客户端下线广播
+// 收到客户端下线信息后向所有客户端发送广播消息
+inline void ClientOfflineBoardcast(int clientID)
+{
+	DataPacket *packOffline = NewDataPacket();
+	packOffline->bytes = PACK_HEAD_BYTE;
+	packOffline->from = clientID;
+	SetPacketHeadInfo(*packOffline, PACK_TYPE_OFFLINE, GetServTimeStamp(), PACK_TAR_BOARDCAST);
+	PushForwardPacket(packOffline);
 }
 
 

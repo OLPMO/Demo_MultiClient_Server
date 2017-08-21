@@ -4,8 +4,9 @@
 
 #include <memory.h>
 
-
-#define PACK_DATA_BYTE (80) // 数据包字节数
+#define PACK_HEAD_BYTE (16) // 包头字节数
+#define PACK_DATA_BYTE (64) // 数据包有效数据段字节数
+#define PACK_TOTL_BYTE (PACK_HEAD_BYTE + PACK_DATA_BYTE) // 数据包总字节数
 
 #define PACK_TYPE_LOGIN     (-1) // 包类型 - 登录信息
 #define PACK_TYPE_ERROR     (-2) // 包类型 - 错误信息
@@ -26,7 +27,7 @@ typedef struct DataPacket
 {
 	int from;
 	int bytes; // 有效数据长度
-	char data[PACK_DATA_BYTE];
+	char data[PACK_TOTL_BYTE];
 } DATA_PACKET, *DATA_PACKET_PTR;
 
 
@@ -38,9 +39,9 @@ inline void SetPacketType(DataPacket &packet, int type)
 
 
 // 设置包时间
-inline void SetPacketTime(DataPacket &packet, long milli)
+inline void SetPacketTime(DataPacket &packet, unsigned long milli)
 {
-	*((long*)&packet.data[4]) = milli;
+	*((unsigned long*)&packet.data[4]) = milli;
 }
 
 
@@ -52,7 +53,7 @@ inline void SetPacketIdentify(DataPacket &packet, int identify)
 
 
 // 设置包头内容
-inline void SetPacketHeadInfo(DataPacket &packet, int type, long milli, int identify)
+inline void SetPacketHeadInfo(DataPacket &packet, int type, unsigned long milli, int identify)
 {
 	SetPacketType(packet, type);
 	SetPacketTime(packet, milli);
@@ -68,9 +69,9 @@ inline int GetPacketType(const DataPacket &packet)
 
 
 // 获取包时间
-inline long GetPacketTime(const DataPacket &packet)
+inline unsigned long GetPacketTime(const DataPacket &packet)
 {
-	return ((long*)&packet.data[4])[0];
+	return ((unsigned long*)&packet.data[4])[0];
 }
 
 
