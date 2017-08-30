@@ -148,6 +148,7 @@ bool UserValidate(const char *name, const char *pwd, int &id)
 // 接收连接进程
 unsigned int _stdcall func_thread_accept(void * parm)
 {
+	Client clientConn;
 	unsigned int id = 0;
 	int lenOfAddr = sizeof(sockaddr_in);
 	while (exitFlag == false)
@@ -160,20 +161,19 @@ unsigned int _stdcall func_thread_accept(void * parm)
 		inet_ntop(AF_INET, &addr.sin_addr, ipBuffer, sizeof(ipBuffer));
 
 		// 创建数据接收线程
-		CLIENT_PTR clientConn = new Client();
-		clientConn->sock = sockClient;
-		clientConn->thread = (HANDLE)_beginthreadex(NULL, 0, func_thread_recv, (void*)clientConn, 0, &id);
-		if (clientConn->thread == NULL)
+		clientConn.sock = sockClient;
+		clientConn.thread = (HANDLE)_beginthreadex(NULL, 0, func_thread_recv, (void*)&clientConn, 0, &id);
+		if (clientConn.thread == NULL)
 		{
 			// 反馈服务器错误
 			DataPacket *pack = NewDataPacket();
 			SetPacketHeadInfo(*pack, PACK_TYPE_ERROR, GetServTimeStamp(), PACK_FROM_SERVER);
-			SendPacket(clientConn->sock, pack);
+			SendPacket(clientConn.sock, pack);
 			ReleaseDataPacket(pack);
 
-			closesocket(clientConn->sock);
-			delete clientConn;
+			closesocket(clientConn.sock);
 		}
+
 	}
 
 	_endthreadex(0);
@@ -204,16 +204,15 @@ bool WaitForLoginPacket(CLIENT_PTR pClientConn)
 			{
 				loginSucceed = true;
 				LoginRequestAccept(pClientConn); // 接受登录
-
 				printf("User Login ACCEPTED : %s\n", name); // DEBUG
-				break;
 			}
 			else
 			{
 				LoginRequestDeny(pClientConn); // 拒绝登录
 				printf("User Login DENIED : %s\n", name); // DEBUG 
-				break;
 			}
+
+			break;
 		}
 		else if (type == PACK_TYPE_OFFLINE)
 		{
@@ -238,27 +237,27 @@ unsigned int _stdcall func_thread_recv(void * parm)
 		return 0;
 	}
 
-	CLIENT_PTR clientConn = (CLIENT_PTR)parm;
-	clientConn->id = -1;
+	Client clientConn;
+	clientConn.id = -1;
+	clientConn.sock = static_cast<CLIENT_PTR>(parm)->sock;
+	clientConn.thread = static_cast<CLIENT_PTR>(parm)->thread;
 
 	printf("Connection request\n"); // DEBUG
 
 	// 阻塞等待登录验证
-	bool loginSucceed = WaitForLoginPacket(clientConn);
+	bool loginSucceed = WaitForLoginPacket(&clientConn);
 
 	// 登录成功 - 循环接收数据包并处理
 	// 如果登录失败 - 则不执行if内语句
 	if (loginSucceed)
 	{
-		printf("Login success\n"); // DEBUG
-
 		// 接收数据包并分配
 		DataPacket *packRecv = NewDataPacket();
-		while (exitFlag == false && clientConn->sock != INVALID_SOCKET)
+		while (exitFlag == false && clientConn.sock != INVALID_SOCKET)
 		{
-			packRecv->bytes = recv(clientConn->sock, packRecv->data, PACK_TOTL_BYTE, 0);
+			packRecv->bytes = recv(clientConn.sock, packRecv->data, PACK_TOTL_BYTE, 0);
 			if (packRecv->bytes <= 0) break;
-			packRecv->from = clientConn->id;
+			packRecv->from = clientConn.id;
 
 			int tar = GetPacketIdentify(*packRecv);
 			if (tar == PACK_TAR_SERVER)
@@ -266,7 +265,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				// 是否为下线信息 - 是则发送下线广播
 				if (GetPacketType(*packRecv) == PACK_TYPE_OFFLINE)
 				{
-					ClientOfflineBoardcast(clientConn->id);
+					ClientOfflineBoardcast(clientConn.id);
 					break;
 				}
 
@@ -286,11 +285,13 @@ unsigned int _stdcall func_thread_recv(void * parm)
 	} // End if - Login Succ
 
 	// 从客户端记录表中删除当前客户端记录并清除登录信息
-	clearUserCache(clientConn->id);
-	closesocket(clientConn->sock);
-	clientConn->sock = INVALID_SOCKET;
-	delete listClients[clientConn->id];
-	listClients[clientConn->id] = nullptr;
+	clearUserCache(clientConn.id);
+	closesocket(clientConn.sock);
+	clientConn.sock = INVALID_SOCKET;
+
+	printf("The client id is %d\n", clientConn.id);
+
+	listClients[clientConn.id] = nullptr;
 
 	_endthreadex(0);
 	return 0;

@@ -78,6 +78,6 @@ bool DB_Validate_User(ServString name, ServString pwd, int &id)
 void clearUserCache(int id)
 {
 	int USER_FLAGS[2] = { USER_FLAG_0, USER_FLAG_1 };
-	if(id == 0 || id == 1)
+	if((unsigned)id < 2)
 		userFlag &= ~USER_FLAGS[id];
 }
