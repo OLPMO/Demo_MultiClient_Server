@@ -26,13 +26,14 @@ ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
 ServMemory<DataPacket> packetPool; // 数据包内存池
 
 
-std::map<int, CLIENT_PTR> mapClients;  // 图 - 客户端信息
-
 std::mutex mtxQueForward; // 转发队列互斥量
 
 std::mutex mtxQueHandle;  // 处理队列互斥量
 
 std::mutex mtxPacketPool; // 包内存池互斥量
+
+
+CLIENT_PTR listClients[2] = { 0 }; // 客户端信息
 
 
 // 函数实现
@@ -286,11 +287,10 @@ unsigned int _stdcall func_thread_recv(void * parm)
 
 	// 从客户端记录表中删除当前客户端记录并清除登录信息
 	clearUserCache(clientConn->id);
-	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(clientConn->id);
-	if (itor != mapClients.end()) mapClients.erase(itor);
 	closesocket(clientConn->sock);
 	clientConn->sock = INVALID_SOCKET;
-	delete clientConn;
+	delete listClients[clientConn->id];
+	listClients[clientConn->id] = nullptr;
 
 	_endthreadex(0);
 	return 0;
@@ -317,13 +317,15 @@ unsigned int _stdcall func_thread_send(void * parm)
 		int tar = GetPacketIdentify(*packForward);
 		if (tar == PACK_TAR_BOARDCAST)
 		{
-			// 广播 - 转发给所有客户端
+			// 广播 - 转发给所有客户端 
+			// 修改之后除自身之外的客户端就只有一个 2017/08/21
 			SetPacketIdentify(*packForward, packForward->from);
-			std::map<int, CLIENT_PTR>::iterator itor;
-			for (itor = mapClients.begin(); itor != mapClients.end(); ++itor)
+
+			if(packForward->from == 0 || packForward->from == 1)
 			{
-				if (itor->second->id != packForward->from) 
-					SendPacket(itor->second->sock, packForward);
+				int forwardTar = 1 - packForward->from;
+				if(listClients[forwardTar])
+					SendPacket(listClients[forwardTar]->sock, packForward);
 			}
 		}
 		else if(tar == PACK_TAR_FROM)
@@ -377,6 +379,10 @@ unsigned int _stdcall func_thread_handle(void *arg)
 		{
 		case PACK_TYPE_SYNC: // 时间同步请求
 			TimeSyncRequestFeedback(packHandling->from);
+			break;
+
+		case PACK_TYPE_RECALC_TIMESTAMP: // 重新时间计算请求
+			TimeSyncRecalcFeedback(packHandling->from, GetPacketTime(*packHandling));
 			break;
 
 		default:

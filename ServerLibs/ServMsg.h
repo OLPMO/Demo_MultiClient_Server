@@ -15,6 +15,10 @@
 #define PACK_TYPE_OFFLINE   (-5) // 包类型 - 玩家下线
 #define PACK_TYPE_SYNC      (-6) // 包类型 - 同步请求
 
+#define PACK_TYPE_SET_TIMESTAMP    (-7) // 包类型 - 设置客户端时间戳
+#define PACK_TYPE_RECALC_TIMESTAMP (-8) // 包类型 - 重新计算时间戳请求
+#define PACK_TYPE_RECALC_RESULT    (-9) // 包类型 - 时间戳重新计算结果
+
 #define PACK_TAR_BOARDCAST (-1) // 包目标 - 广播
 #define PACK_TAR_SERVER    (-2) // 包目标 - 服务器处理
 #define PACK_TAR_FROM      (-3) // 包目标 - 转发到来源

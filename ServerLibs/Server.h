@@ -66,13 +66,14 @@ extern ServQueue<DataPacket*, 128> queHandle;  // ´¦Àí¶ÓÁĞ - ÆäÖĞÊı¾İ°üĞèÒª·şÎñÆ
 extern ServMemory<DataPacket> packetPool; // Êı¾İ°üÄÚ´æ³Ø
 
 
-extern std::map<int, CLIENT_PTR> mapClients;  // Í¼ - ¿Í»§¶ËĞÅÏ¢
-
 extern std::mutex mtxQueForward; // ×ª·¢¶ÓÁĞ»¥³âÁ¿
 
 extern std::mutex mtxQueHandle;  // ´¦Àí¶ÓÁĞ»¥³âÁ¿
 
 extern std::mutex mtxPacketPool; // °üÄÚ´æ³Ø»¥³âÁ¿
+
+
+extern CLIENT_PTR listClients[2]; // ¿Í»§¶ËĞÅÏ¢
 
 
 // º¯ÊıÉùÃ÷
@@ -174,8 +175,9 @@ inline void PushHandlePacket(DataPacket *pack)
 // »ñÈ¡¿Í»§¶ËĞÅÏ¢ - ¿Í»§¶ËID
 inline CLIENT_PTR FindClientByID(int id)
 {
-	std::map<int, CLIENT_PTR>::iterator itor = mapClients.find(id);
-	if (itor != mapClients.end()) return (itor->second);
+	if(id == 0 || id == 1) 
+		return listClients[id];
+
 	return nullptr;
 }
 
@@ -191,7 +193,7 @@ inline void SendPacket(SOCKET sock, DataPacket *pack)
 // Ìí¼Óµ±Ç°ÓÃ»§µ½ÓÃ»§±í²¢·´À¡µÇÂ¼³É¹¦ĞÅÏ¢
 inline void LoginRequestAccept(CLIENT_PTR pClient)
 {
-	mapClients.insert(std::pair<int, CLIENT_PTR>(pClient->id, pClient));
+	listClients[pClient->id] = pClient;
 
 	// ÏòµÇÂ¼³É¹¦µÄ¿Í»§¶Ë·¢ËÍµÇÂ¼³É¹¦·´À¡
 	DataPacket *packAccept = NewDataPacket();
@@ -221,10 +223,28 @@ inline void TimeSyncRequestFeedback(int idFrom)
 	DataPacket *packSync = NewDataPacket();
 	packSync->bytes = PACK_HEAD_BYTE;
 	packSync->from = PACK_FROM_SERVER;
-	SetPacketHeadInfo(*packSync, PACK_TYPE_SYNC, GetServTimeStamp(), idFrom);
+	SetPacketHeadInfo(*packSync, PACK_TYPE_SET_TIMESTAMP, GetServTimeStamp(), idFrom);
 	PushForwardPacket(packSync);
 
 	printf("Send a time sync : %ld\n", GetPacketTime(*packSync));
+}
+
+
+// Ê±¼äÖØĞÂ¼ÆËãÇëÇó»ØÀ¡
+// Ïò¿Í»§¶Ë·¢ËÍ¼ÆËã¹ıºóµÄÊ±¼ä
+// Parm : idFrom °üÀ´Ô´ID
+// Parm : timeStampInPack À´Ô´°üĞ¯´øµÄÊ±¼ä´Á
+inline void TimeSyncRecalcFeedback(int idFrom, long timeStampInPack)
+{
+	long recalcTimeStamp = (GetServTimeStamp() + timeStampInPack) / 2;
+
+	DataPacket *packFeedback = NewDataPacket();
+	packFeedback->bytes = PACK_HEAD_BYTE;
+	packFeedback->from = PACK_FROM_SERVER;
+	SetPacketHeadInfo(*packFeedback, PACK_TYPE_RECALC_RESULT, recalcTimeStamp, idFrom);
+	PushForwardPacket(packFeedback);
+
+	printf("Recalc a time stamp : %ld\n", GetPacketTime(*packFeedback));
 }
 
 
