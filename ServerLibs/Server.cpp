@@ -38,7 +38,10 @@ CLIENT_PTR listClients[2] = { 0 }; // 客户端信息
 
 // 函数实现
 
-// 启动 - 端口号 / 强制凝聚(false表示取消自动分组聚合)
+// 启动服务器
+// Parm : port 端口号
+// Parm : forceCoalesce 是否开启分组算法 - 不开启可以加速游戏中发包响应速度
+// Return : 是否启动成功
 bool Start(unsigned short port, bool forceCoalesce /* = false */)
 {
 	if (sockServ != INVALID_SOCKET) Close();
@@ -139,6 +142,10 @@ void Close(void)
 
 
 // 验证是否可登陆并返回ID
+// Parm : name 用户名
+// Parm : pwd  待验证的密码
+// Parm : id   返回分配给用户的标识
+// Return : 验证是否成功
 bool UserValidate(const char *name, const char *pwd, int &id)
 {
 	return DB_Validate_User(name, pwd, id);
@@ -183,7 +190,7 @@ unsigned int _stdcall func_thread_accept(void * parm)
 
 // 等待登录数据包并验证
 // 将调用该函数的线程阻塞直到验证登录成功或客户端断开连接
-// Parm   : 客户端信息
+// Parm   : pClientConn 客户端信息
 // Return : 是否登录成功
 bool WaitForLoginPacket(CLIENT_PTR pClientConn)
 {
@@ -209,7 +216,7 @@ bool WaitForLoginPacket(CLIENT_PTR pClientConn)
 			else
 			{
 				LoginRequestDeny(pClientConn); // 拒绝登录
-				printf("User Login DENIED : %s\n", name); // DEBUG 
+				printf("User Login DENIED : %s\n", name); // DEBUG
 			}
 
 			break;
@@ -229,6 +236,8 @@ bool WaitForLoginPacket(CLIENT_PTR pClientConn)
 
 
 // 接收数据进程
+// Parm : parm 指向线程服务用户的Client结构
+// Return : 结束码
 unsigned int _stdcall func_thread_recv(void * parm)
 {
 	if (parm == nullptr)
@@ -299,6 +308,8 @@ unsigned int _stdcall func_thread_recv(void * parm)
 
 
 // 发送数据进程
+// Parm : parm 未使用的
+// Return : 返回码
 unsigned int _stdcall func_thread_send(void * parm)
 {
 	while (exitFlag == false)
@@ -318,16 +329,14 @@ unsigned int _stdcall func_thread_send(void * parm)
 		int tar = GetPacketIdentify(*packForward);
 		if (tar == PACK_TAR_BOARDCAST)
 		{
-			// 广播 - 转发给所有客户端 
-			// 修改之后除自身之外的客户端就只有一个 2017/08/21
+			// 广播 - 转发给除来源之外的所有客户端 
 			SetPacketIdentify(*packForward, packForward->from);
 
-			if(packForward->from == 0 || packForward->from == 1)
-			{
-				int forwardTar = 1 - packForward->from;
-				if(listClients[forwardTar])
-					SendPacket(listClients[forwardTar]->sock, packForward);
-			}
+			if(packForward->from != 0 && listClients[0])
+				SendPacket(listClients[0]->sock, packForward);
+
+			if(packForward->from != 1 && listClients[1])
+				SendPacket(listClients[1]->sock, packForward);
 		}
 		else if(tar == PACK_TAR_FROM)
 		{
@@ -359,6 +368,8 @@ unsigned int _stdcall func_thread_send(void * parm)
 
 
 // 服务器数据处理进程
+// Parm : arg 未使用的
+// Return : 结束码
 unsigned int _stdcall func_thread_handle(void *arg)
 {
 	while (exitFlag == false)

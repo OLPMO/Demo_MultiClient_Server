@@ -103,13 +103,15 @@ unsigned int _stdcall func_thread_heartsync(void *arg); // 心跳同步进程
 
 
 // 获取当前时间戳
-inline unsigned long GetServTimeStamp(void)
+// Return : 当前服务器时间戳,毫秒
+inline unsigned long long GetServTimeStamp(void)
 {
-	return (unsigned long)GetTickCount();
+	return (unsigned long long)GetTickCount();
 }
 
 
 // 申请一个新的数据包
+// Return : 申请到的新数据包指针
 inline DataPacket* NewDataPacket(void)
 {
 	mtxPacketPool.lock();
@@ -121,6 +123,7 @@ inline DataPacket* NewDataPacket(void)
 
 
 // 释放一个数据包内存
+// Parm : 待回收的数据包指针
 inline void ReleaseDataPacket(DataPacket *pack)
 {
 	mtxPacketPool.lock();
@@ -130,6 +133,7 @@ inline void ReleaseDataPacket(DataPacket *pack)
 
 
 // 从转发队列中取出一个数据包
+// Return : 从转发队列中取出的数据包
 inline DataPacket* PopForwardPacket(void)
 {
 	mtxQueForward.lock();
@@ -140,6 +144,7 @@ inline DataPacket* PopForwardPacket(void)
 
 
 // 将一个转发的数据包入队
+// Parm : pack 待插入到转发队列的数据包
 inline void PushForwardPacket(DataPacket *pack)
 {
 	mtxQueForward.lock();
@@ -151,6 +156,7 @@ inline void PushForwardPacket(DataPacket *pack)
 
 
 // 从处理队列中取出一个数据包
+// Return : 从队列取出的数据包
 inline DataPacket* PopHandlePacket(void)
 {
 	mtxQueHandle.lock();
@@ -162,6 +168,7 @@ inline DataPacket* PopHandlePacket(void)
 
 
 // 将一个处理数据包入队
+// Parm : pack 待插入到处理队列的数据包
 inline void PushHandlePacket(DataPacket *pack)
 {
 	mtxQueHandle.lock();
@@ -172,10 +179,11 @@ inline void PushHandlePacket(DataPacket *pack)
 }
 
 
-// 获取客户端信息 - 客户端ID
+// 获取客户端信息
+// Parm : id 客户端标识
 inline CLIENT_PTR FindClientByID(int id)
 {
-	if(id == 0 || id == 1) 
+	if((unsigned)id <= 1)
 		return listClients[id];
 
 	return nullptr;
@@ -183,14 +191,16 @@ inline CLIENT_PTR FindClientByID(int id)
 
 
 // 发送一个数据包
+// Parm : sock 客户端套接字
+// Parm : pack 待发送的数据包
 inline void SendPacket(SOCKET sock, DataPacket *pack)
 {
 	send(sock, pack->data, (pack->bytes > 0 ? pack->bytes : sizeof(pack->data)), 0);
 }
 
 
-// 登录请求接受
-// 添加当前用户到用户表并反馈登录成功信息
+// 登录请求接受,添加当前用户到用户表并反馈登录成功信息
+// Parm : pClient 登录成功的用户信息
 inline void LoginRequestAccept(CLIENT_PTR pClient)
 {
 	listClients[pClient->id] = pClient;
@@ -201,11 +211,23 @@ inline void LoginRequestAccept(CLIENT_PTR pClient)
 	packAccept->from = pClient->id;
 	SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, GetServTimeStamp(), pClient->id);
 	PushForwardPacket(packAccept);
+
+	// 判断是否都登录成功
+	// 两个客户端登陆成功则发送开始游戏的数据包
+	if(listClients[0] && listClients[1])
+	{
+		DataPacket *packGameStart = NewDataPacket();
+		packGameStart->bytes = PACK_HEAD_BYTE;
+		packGameStart->from = PACK_FROM_SERVER;
+		SetPacketHeadInfo(*packGameStart, PACK_TYPE_GAMEON, GetServTimeStamp() + 1000, PACK_TAR_BOARDCAST);
+		PushForwardPacket(packGameStart);
+	}
 }
 
 
 // 登录请求拒绝
 // 向客户端发送登录拒绝的反馈信息
+// Parm : pClient 拒绝登录的用户信息
 inline void LoginRequestDeny(CLIENT_PTR pClient)
 {
 	// 向客户端发送服务器拒绝登录的反馈
@@ -218,6 +240,7 @@ inline void LoginRequestDeny(CLIENT_PTR pClient)
 
 // 时间同步回馈消息
 // 向客户端发送带有服务器时间的数据包
+// Parm : idFrom 来源客户端标识
 inline void TimeSyncRequestFeedback(int idFrom)
 {
 	DataPacket *packSync = NewDataPacket();
@@ -225,8 +248,6 @@ inline void TimeSyncRequestFeedback(int idFrom)
 	packSync->from = PACK_FROM_SERVER;
 	SetPacketHeadInfo(*packSync, PACK_TYPE_SET_TIMESTAMP, GetServTimeStamp(), idFrom);
 	PushForwardPacket(packSync);
-
-	printf("Send a time sync : %ld\n", GetPacketTime(*packSync));
 }
 
 
@@ -234,17 +255,15 @@ inline void TimeSyncRequestFeedback(int idFrom)
 // 向客户端发送计算过后的时间
 // Parm : idFrom 包来源ID
 // Parm : timeStampInPack 来源包携带的时间戳
-inline void TimeSyncRecalcFeedback(int idFrom, long timeStampInPack)
+inline void TimeSyncRecalcFeedback(int idFrom, unsigned long long timeStampInPack)
 {
-	long recalcTimeStamp = (GetServTimeStamp() + timeStampInPack) / 2;
+	unsigned long long recalcTimeStamp = (GetServTimeStamp() + timeStampInPack) / 2;
 
 	DataPacket *packFeedback = NewDataPacket();
 	packFeedback->bytes = PACK_HEAD_BYTE;
 	packFeedback->from = PACK_FROM_SERVER;
 	SetPacketHeadInfo(*packFeedback, PACK_TYPE_RECALC_RESULT, recalcTimeStamp, idFrom);
 	PushForwardPacket(packFeedback);
-
-	printf("Recalc a time stamp : %ld\n", GetPacketTime(*packFeedback));
 }
 
 
