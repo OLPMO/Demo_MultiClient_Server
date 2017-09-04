@@ -36,6 +36,9 @@ typedef struct Client
 	int id;
 	SOCKET sock;
 	HANDLE thread;
+
+	bool ready; // 是否准备好
+
 } CLIENT, *CLIENT_PTR;
 
 
@@ -211,17 +214,6 @@ inline void LoginRequestAccept(CLIENT_PTR pClient)
 	packAccept->from = pClient->id;
 	SetPacketHeadInfo(*packAccept, PACK_TYPE_ACCEPT, GetServTimeStamp(), pClient->id);
 	PushForwardPacket(packAccept);
-
-	// 判断是否都登录成功
-	// 两个客户端登陆成功则发送开始游戏的数据包
-	if(listClients[0] && listClients[1])
-	{
-		DataPacket *packGameStart = NewDataPacket();
-		packGameStart->bytes = PACK_HEAD_BYTE;
-		packGameStart->from = PACK_FROM_SERVER;
-		SetPacketHeadInfo(*packGameStart, PACK_TYPE_GAMEON, GetServTimeStamp() + 1000, PACK_TAR_BOARDCAST);
-		PushForwardPacket(packGameStart);
-	}
 }
 
 
@@ -264,6 +256,32 @@ inline void TimeSyncRecalcFeedback(int idFrom, unsigned long long timeStampInPac
 	packFeedback->from = PACK_FROM_SERVER;
 	SetPacketHeadInfo(*packFeedback, PACK_TYPE_RECALC_RESULT, recalcTimeStamp, idFrom);
 	PushForwardPacket(packFeedback);
+}
+
+
+// 游戏开始请求回调
+// Parm : idFrom 包来源
+inline void StartGameRequestCallback(int idFrom)
+{
+	if((unsigned)idFrom > 1)
+		return ;
+
+	if(listClients[idFrom])
+		listClients[idFrom]->ready = true;
+
+	// 如果两个都准备好则发送开始通知
+	int other = 1 - idFrom;
+	if(listClients[other] && listClients[other]->ready)
+	{
+		DataPacket *packStart = NewDataPacket();
+		packStart->bytes = PACK_HEAD_BYTE;
+		packStart->from = PACK_FROM_SERVER;
+		SetPacketHeadInfo(*packStart, PACK_TYPE_GAMEON, GetServTimeStamp() + 1000, PACK_TAR_BOARDCAST);
+		PushForwardPacket(packStart);
+
+		listClients[idFrom]->ready = false;
+		listClients[other]->ready = false;
+	}
 }
 
 

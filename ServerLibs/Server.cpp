@@ -248,6 +248,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 
 	Client clientConn;
 	clientConn.id = -1;
+	clientConn.ready = false;
 	clientConn.sock = static_cast<CLIENT_PTR>(parm)->sock;
 	clientConn.thread = static_cast<CLIENT_PTR>(parm)->thread;
 
@@ -395,6 +396,10 @@ unsigned int _stdcall func_thread_handle(void *arg)
 
 		case PACK_TYPE_RECALC_TIMESTAMP: // 重新时间计算请求
 			TimeSyncRecalcFeedback(packHandling->from, GetPacketTime(*packHandling));
+			break;
+
+		case PACK_TYPE_GAMEON: // 接收到游戏开始请求
+			StartGameRequestCallback(packHandling->from);
 			break;
 
 		default:
