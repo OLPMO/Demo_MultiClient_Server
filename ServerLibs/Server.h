@@ -3,6 +3,7 @@
 
 #include <map>
 #include <mutex>
+#include <queue>
 
 #include <memory.h>
 #include <process.h>
@@ -12,10 +13,11 @@
 #include <WS2tcpip.h>
 
 #include "ServMsg.h"
-#include "ServQueue.h"
 #include "ServMemory.h"
 
 #pragma comment(lib, "ws2_32.lib")
+
+#include "../FLogger.h" // DEBUG
 
 
 // 宏
@@ -62,9 +64,9 @@ extern HANDLE hSignalSend;   // 发送线程启动信号
 extern HANDLE hSignalHandle; // 处理线程启动信号
 
 
-extern ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
+extern std::queue<DataPacket*> queForward; // 转发队列
 
-extern ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
+extern std::queue<DataPacket*> queHandle; // 处理队列
 
 extern ServMemory<DataPacket> packetPool; // 数据包内存池
 
@@ -139,9 +141,15 @@ inline void ReleaseDataPacket(DataPacket *pack)
 // Return : 从转发队列中取出的数据包
 inline DataPacket* PopForwardPacket(void)
 {
+	DataPacket *pack = nullptr;
 	mtxQueForward.lock();
-	DataPacket* pack = queForward.Pop();
+	if(!queForward.empty())
+	{
+		pack = queForward.front();
+		queForward.pop();
+	}
 	mtxQueForward.unlock();
+
 	return pack;
 }
 
@@ -151,7 +159,7 @@ inline DataPacket* PopForwardPacket(void)
 inline void PushForwardPacket(DataPacket *pack)
 {
 	mtxQueForward.lock();
-	queForward.Push(pack);
+	queForward.push(pack);
 	mtxQueForward.unlock();
 
 	SetEvent(hSignalSend);
@@ -162,8 +170,13 @@ inline void PushForwardPacket(DataPacket *pack)
 // Return : 从队列取出的数据包
 inline DataPacket* PopHandlePacket(void)
 {
+	DataPacket *pack = nullptr;
 	mtxQueHandle.lock();
-	DataPacket *pack = queHandle.Pop();
+	if(!queHandle.empty())
+	{
+		pack = queHandle.front();
+		queHandle.pop();
+	}
 	mtxQueHandle.unlock();
 
 	return pack;
@@ -175,7 +188,7 @@ inline DataPacket* PopHandlePacket(void)
 inline void PushHandlePacket(DataPacket *pack)
 {
 	mtxQueHandle.lock();
-	queHandle.Push(pack);
+	queHandle.push(pack);
 	mtxQueHandle.unlock();
 
 	SetEvent(hSignalHandle);
@@ -198,7 +211,10 @@ inline CLIENT_PTR FindClientByID(int id)
 // Parm : pack 待发送的数据包
 inline void SendPacket(SOCKET sock, DataPacket *pack)
 {
-	send(sock, pack->data, (pack->bytes > 0 ? pack->bytes : sizeof(pack->data)), 0);
+	int bytes = send(sock, pack->data, (pack->bytes > 0 ? pack->bytes : sizeof(pack->data)), 0);
+	if(bytes == SOCKET_ERROR)
+		printf("发送失败 [TYPE : %d] : BYTES : %d\n", GetPacketType(*pack), bytes);
+
 }
 
 

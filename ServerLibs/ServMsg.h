@@ -5,7 +5,7 @@
 #include <memory.h>
 
 #define PACK_HEAD_BYTE (16) // 包头字节数
-#define PACK_DATA_BYTE (64) // 数据包有效数据段字节数
+#define PACK_DATA_BYTE (128) // 数据包有效数据段字节数
 #define PACK_TOTL_BYTE (PACK_HEAD_BYTE + PACK_DATA_BYTE) // 数据包总字节数
 
 

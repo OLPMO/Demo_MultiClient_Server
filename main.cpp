@@ -8,20 +8,44 @@ using namespace std;
 
 #define SERVER_PORT (8000) // 端口号
 
+// 字符串转换为小写
+void strConvertToLowWord(char *str)
+{
+	for(char *ptr = str; *ptr != '\0'; ptr++)
+	{
+		if(*ptr >= 'A' && *ptr <= 'Z')
+			(*ptr) += 32;
+	}
+}
+
 int main(void)
 {
-	
+	// DEBUG 
+	//FLogger::addLog("debug", "./debug.txt");
+	/////////////////////
+
 	if (Start(SERVER_PORT))
 	{
+		cout << "[SERVER] : Version - 梁宇轩" << endl;
 		cout << "[SERVER] : Has Been Started" << endl;
 
-		// 维持服务器
+		// 循环等待 - 维持服务器
 		char cmd[128] = { 0 };
-		while (true)
+		while (cin >> cmd)
 		{
-			cin >> cmd;
-			if (strcmp(cmd, "exit") == 0)
+			strConvertToLowWord(cmd); //  转换为小写串 - 忽略大小写
+
+			if (strcmp(cmd, "clear") == 0) // 清屏
+			{
+				system("cls");
+				cout << "[SERVER] : Version - 梁宇轩" << endl;
+				cout << "[SERVER] : Has Been Started" << endl;
+			}
+			else if(strcmp(cmd, "exit") == 0) // 退出
+			{
 				break;
+			}
+
 		}
 	}
 

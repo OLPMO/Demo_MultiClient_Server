@@ -1,6 +1,7 @@
 #include "Server.h"
 #include "ServDB.h"
 
+
 // 全局变量
 
 bool exitFlag = false;
@@ -19,9 +20,9 @@ HANDLE hSignalSend = 0;   // 发送线程启动信号
 HANDLE hSignalHandle = 0; // 处理线程启动信号
 
 
-ServQueue<DataPacket*, 512> queForward; // 转发队列 - 其中数据包需要转发
+std::queue<DataPacket*> queForward; // 转发队列
 
-ServQueue<DataPacket*, 128> queHandle;  // 处理队列 - 其中数据包需要服务器处理
+std::queue<DataPacket*> queHandle; // 处理队列
 
 ServMemory<DataPacket> packetPool; // 数据包内存池
 
@@ -128,9 +129,6 @@ void Close(void)
 
 	closesocket(sockServ);
 	sockServ = INVALID_SOCKET;
-
-	queHandle.Clear();
-	queForward.Clear();
 
 	for (int i = 0; i < SEND_THREAD_NUM; ++i) SetEvent(hSignalSend);
 	for (int i = 0; i < HANDLE_THREAD_NUM; ++i) SetEvent(hSignalHandle);
@@ -269,6 +267,13 @@ unsigned int _stdcall func_thread_recv(void * parm)
 			if (packRecv->bytes <= 0) break;
 			packRecv->from = clientConn.id;
 
+			// DEBUG
+			/*
+			char str[512];
+			sprintf_s(str, "接收到数据包, 类型 : %d, 来源SOCKET : %llu, 时间戳 : %llu", GetPacketType(*packRecv), clientConn.sock, GetPacketTime(*packRecv));
+			FLogger::Log("debug", str);*/
+			/////////////////////////////////
+
 			int tar = GetPacketIdentify(*packRecv);
 			if (tar == PACK_TAR_SERVER)
 			{
@@ -287,6 +292,7 @@ unsigned int _stdcall func_thread_recv(void * parm)
 				PushForwardPacket(packRecv);
 				packRecv = NewDataPacket();
 			}
+
 
 		} // End while - exitFlag
 
@@ -334,10 +340,29 @@ unsigned int _stdcall func_thread_send(void * parm)
 			SetPacketIdentify(*packForward, packForward->from);
 
 			if(packForward->from != 0 && listClients[0])
+			{
 				SendPacket(listClients[0]->sock, packForward);
 
+				// DEBUG
+				/*
+				char str[512];
+				sprintf_s(str, "转发数据包, 类型 : %d, 目标SOCKET : %llu, 时间戳 : %llu", GetPacketType(*packForward), listClients[0]->sock, GetPacketTime(*packForward));
+				FLogger::Log("debug", str);
+				*/
+			}
+
 			if(packForward->from != 1 && listClients[1])
+			{
 				SendPacket(listClients[1]->sock, packForward);
+
+				// DEBUG
+				/*
+				char str[512];
+				sprintf_s(str, "转发数据包, 类型 : %d, 目标SOCKET : %llu, 时间戳 : %llu", GetPacketType(*packForward), listClients[1]->sock, GetPacketTime(*packForward));
+				FLogger::Log("debug", str);
+				*/
+			}
+
 		}
 		else if(tar == PACK_TAR_FROM)
 		{
@@ -399,6 +424,7 @@ unsigned int _stdcall func_thread_handle(void *arg)
 			break;
 
 		case PACK_TYPE_GAMEON: // 接收到游戏开始请求
+			printf("GAME ON REQUEST - SOCKET : %llu\n", listClients[packHandling->from]->sock); // DEBUG
 			StartGameRequestCallback(packHandling->from);
 			break;
 
